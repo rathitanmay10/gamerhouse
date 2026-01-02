@@ -93,6 +93,10 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
     "EXCEPTION_HANDLER": "core.exceptions.custom_exception_handler",
+    "DEFAULT_PAGINATION_CLASS": "core.pagination.DefaultPagination",
+    "DEFAULT_RENDERER_CLASSES": [
+        "core.renderers.StandardJSONRenderer",
+    ],
 }
 
 SIMPLE_JWT = {
