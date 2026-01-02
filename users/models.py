@@ -3,7 +3,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
 from core.enums import Roles
-from users.managers import UserManager
+from users.managers import UserManager, AllUserManager
 
 
 class User(AbstractUser):
@@ -23,6 +23,7 @@ class User(AbstractUser):
     deleted_at = models.DateTimeField(blank=True, null=True)
 
     objects = UserManager()
+    all_objects = AllUserManager()
 
     def soft_delete(self):
         """Soft delete the user by disabling login and recording deletion time."""

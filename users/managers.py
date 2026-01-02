@@ -4,9 +4,11 @@ from core.enums import Roles
 
 class UserManager(BaseUserManager):
     """
-    User manager with:
-    - soft-delete filtering
-    - required Django auth creation methods
+    Default user manager with soft-delete filtering and normalized credentials.
+    - Excludes soft-deleted users from the default queryset
+    - Creates regular users with normalized username and email
+    - Assigns default roles and activation flags
+    - Creates superusers with enforced admin role and permissions
     """
 
     def get_queryset(self):
@@ -16,7 +18,8 @@ class UserManager(BaseUserManager):
         if not email:
             raise ValueError("Email must be provided")
 
-        email = self.normalize_email(email)
+        username = username.lower()
+        email = self.normalize_email(email).lower()
         extra_fields.setdefault("role", Roles.GAMER)
         extra_fields.setdefault("is_active", True)
         user = self.model(username=username, email=email, **extra_fields)
@@ -33,3 +36,12 @@ class UserManager(BaseUserManager):
             raise ValueError("Superuser must have ADMIN role")
 
         return self.create_user(username, email, password, **extra_fields)
+
+
+class AllUserManager(BaseUserManager):
+    """
+    User manager that returns all users, including inactive or soft-deleted ones.
+    """
+
+    def get_queryset(self):
+        return super().get_queryset()
