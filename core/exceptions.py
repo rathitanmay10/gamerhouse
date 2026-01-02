@@ -2,6 +2,7 @@ from rest_framework.views import exception_handler
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.exceptions import ValidationError, APIException
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 
 
 def is_unique_field_error(exc) -> bool:
@@ -14,6 +15,21 @@ def is_unique_field_error(exc) -> bool:
                 return True
 
     return False
+
+
+def normalize_jwt_error(exc):
+    """
+    Extract a clean, stable message from SimpleJWT errors.
+    """
+    if isinstance(exc.detail, dict):
+        if "detail" in exc.detail:
+            return exc.detail["detail"]
+
+        messages = exc.detail.get("messages")
+        if messages and isinstance(messages, list):
+            return messages[0].get("message")
+
+    return "Invalid or expired token."
 
 
 def custom_exception_handler(exc, context):
@@ -45,6 +61,18 @@ def custom_exception_handler(exc, context):
                 }
             },
             status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if isinstance(exc, (TokenError, InvalidToken)):
+        return Response(
+            {
+                "error": {
+                    "code": "token_not_valid",
+                    "message": normalize_jwt_error(exc),
+                    "details": None,
+                }
+            },
+            status=status.HTTP_401_UNAUTHORIZED,
         )
 
     if isinstance(exc, APIException):
