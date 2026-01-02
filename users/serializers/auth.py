@@ -1,0 +1,90 @@
+from django.contrib.auth import get_user_model
+from rest_framework import serializers
+from django.contrib.auth.password_validation import validate_password
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import TokenError
+
+User = get_user_model()
+
+
+class RegisterSerializer(serializers.ModelSerializer):
+    """
+    Serializer for registering a new user.
+    - Validate password strength using Django's password validators
+    - Ensure password and confirm_password match
+    - Create a user using the configured UserManager
+    """
+
+    password = serializers.CharField(write_only=True, validators=[validate_password])
+    confirm_password = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = User
+        fields = (
+            "username",
+            "email",
+            "password",
+            "first_name",
+            "last_name",
+            "confirm_password",
+        )
+
+    def validate(self, attrs):
+        if attrs["password"] != attrs["confirm_password"]:
+            raise serializers.ValidationError({"password": "Passwords do not match"})
+        return attrs
+
+    def validate_username(self, value):
+        if User.all_objects.filter(username=value).exists():
+            raise serializers.ValidationError(
+                "Username already exists.",
+                code="unique",
+            )
+        return value
+
+    def validate_email(self, value):
+        if User.all_objects.filter(email=value).exists():
+            raise serializers.ValidationError(
+                "Email already exists.",
+                code="unique",
+            )
+        return value
+
+    def create(self, validated_data):
+        """
+        Create user via UserManager to ensure:
+        - password hashing
+        - default role assignment
+        """
+
+        validated_data.pop("confirm_password")
+        return User.objects.create_user(**validated_data)
+
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """
+    Custom JWT serializer that injects user roles
+    into the issued access and refresh tokens.
+    """
+
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token["role"] = user.role
+        return token
+
+
+class LogoutSerializer(serializers.Serializer):
+    """
+    Serializer for refresh-token based logout (blacklisting).
+    """
+
+    refresh = serializers.CharField()
+
+    def save(self, **kwargs):
+        try:
+            token = RefreshToken(self.validated_data["refresh"])
+            token.blacklist()
+        except TokenError:
+            raise serializers.ValidationError({"refresh": "Invalid or expired token"})
