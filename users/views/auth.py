@@ -1,13 +1,3 @@
-"""
-{
-  "username": "tanmay_rathi",
-  "email": "tanmay.rathi@example.com",
-  "password": "StrongPassword@123",
-  "confirm_password": "StrongPassword@123"
-}
-
-"""
-
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
