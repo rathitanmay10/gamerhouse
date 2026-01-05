@@ -1,12 +1,13 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
-from users.serializers.auth import (
-    RegisterSerializer,
+
+from users.serializers import (
     CustomTokenObtainPairSerializer,
     LogoutSerializer,
+    RegisterSerializer,
 )
 
 
@@ -29,7 +30,6 @@ class RegisterAPIView(APIView):
 
         return Response(
             {
-                "message": "User registered successfully",
                 "data": {
                     "username": user.username,
                     "email": user.email,

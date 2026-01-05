@@ -1,6 +1,7 @@
 from rest_framework.viewsets import ModelViewSet
-from catalog.serializers.platform import PlatformSerializer
+
 from catalog.models import Platform
+from catalog.serializers.platform import PlatformSerializer
 from core.permissions import IsAdminOrReadOnly
 
 

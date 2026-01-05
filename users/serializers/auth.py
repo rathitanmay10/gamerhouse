@@ -1,9 +1,9 @@
 from django.contrib.auth import get_user_model
-from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
+from rest_framework import serializers
+from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.exceptions import TokenError
 
 User = get_user_model()
 
@@ -11,9 +11,13 @@ User = get_user_model()
 class RegisterSerializer(serializers.ModelSerializer):
     """
     Serializer for registering a new user.
-    - Validate password strength using Django's password validators
+
+    Responsibilities:
+    - Validate password strength using Django validators
     - Ensure password and confirm_password match
-    - Create a user using the configured UserManager
+    - Prevent registration if username/email already exists
+    - Block registration for inactive users
+    - Create user using the UserManager
     """
 
     password = serializers.CharField(write_only=True, validators=[validate_password])
@@ -36,19 +40,47 @@ class RegisterSerializer(serializers.ModelSerializer):
         return attrs
 
     def validate_username(self, value):
-        if User.all_objects.filter(username=value).exists():
+        """
+        Field-level validation for username.
+
+        - Blocks registration if an inactive user exists
+        - Raises a unique constraint error for active users
+        """
+        user = User.all_objects.filter(username=value).first()
+
+        if user:
+            if not user.is_active:
+                raise serializers.ValidationError(
+                    "User exists already, contact admin.",
+                    code="unique",
+                )
             raise serializers.ValidationError(
                 "Username already exists.",
                 code="unique",
             )
+
         return value
 
     def validate_email(self, value):
-        if User.all_objects.filter(email=value).exists():
+        """
+        Field-level validation for email.
+
+        - Blocks registration if an inactive user exists
+        - Raises a unique constraint error for active users
+        """
+        user = User.all_objects.filter(email=value).first()
+
+        if user:
+            if not user.is_active:
+                raise serializers.ValidationError(
+                    "User exists already, contact admin.",
+                    code="unique",
+                )
             raise serializers.ValidationError(
                 "Email already exists.",
                 code="unique",
             )
+
         return value
 
     def create(self, validated_data):

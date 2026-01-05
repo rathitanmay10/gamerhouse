@@ -1,7 +1,7 @@
-from rest_framework.views import exception_handler
-from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.exceptions import ValidationError, APIException
+from rest_framework.exceptions import APIException, ValidationError
+from rest_framework.response import Response
+from rest_framework.views import exception_handler
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 
 
@@ -21,6 +21,9 @@ def normalize_jwt_error(exc):
     """
     Extract a clean, stable message from SimpleJWT errors.
     """
+    if isinstance(exc.detail, str):
+        return exc.detail
+
     if isinstance(exc.detail, dict):
         if "detail" in exc.detail:
             return exc.detail["detail"]
@@ -41,49 +44,25 @@ def custom_exception_handler(exc, context):
     """
     if isinstance(exc, ValidationError) and is_unique_field_error(exc):
         return Response(
-            {
-                "error": {
-                    "code": "conflict",
-                    "message": "Resource already exists",
-                    "details": exc.detail,
-                }
-            },
+            {"error": exc.detail},
             status=status.HTTP_409_CONFLICT,
         )
 
     if isinstance(exc, ValidationError):
         return Response(
-            {
-                "error": {
-                    "code": "validation_error",
-                    "message": "Invalid request data",
-                    "details": exc.detail,
-                }
-            },
+            {"error": exc.detail},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
     if isinstance(exc, (TokenError, InvalidToken)):
         return Response(
-            {
-                "error": {
-                    "code": "token_not_valid",
-                    "message": normalize_jwt_error(exc),
-                    "details": None,
-                }
-            },
+            {"error": normalize_jwt_error(exc)},
             status=status.HTTP_401_UNAUTHORIZED,
         )
 
     if isinstance(exc, APIException):
         return Response(
-            {
-                "error": {
-                    "code": exc.default_code,
-                    "message": exc.detail,
-                    "details": None,
-                }
-            },
+            {"error": exc.detail},
             status=exc.status_code,
         )
 
