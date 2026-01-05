@@ -1,5 +1,6 @@
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
+
 from core.constants import MAX_PAGE_SIZE, PAGE_SIZE
 
 

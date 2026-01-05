@@ -1,6 +1,7 @@
 from rest_framework.viewsets import ModelViewSet
-from catalog.serializers.genre import GenreSerializer
+
 from catalog.models import Genre
+from catalog.serializers.genre import GenreSerializer
 from core.permissions import IsAdminOrReadOnly
 
 

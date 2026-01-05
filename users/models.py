@@ -1,9 +1,11 @@
 import uuid
-from django.db import models
+
 from django.contrib.auth.models import AbstractUser
+from django.db import models
 from django.utils import timezone
+
 from core.enums import Roles
-from users.managers import UserManager, AllUserManager
+from users.managers import AllUserManager, UserManager
 
 
 class User(AbstractUser):
