@@ -5,16 +5,11 @@ from core.enums import Roles
 
 class IsAdminRole(BasePermission):
     """
-    Allows access only to users with the `admin` role,
-    as declared in the JWT access token.
+    Allows access only to users with the ADMIN role.
     """
 
     def has_permission(self, request, view):
-        return (
-            request.user.is_authenticated
-            and request.auth
-            and request.auth.get("role") == Roles.ADMIN
-        )
+        return request.user.is_authenticated and request.user.role == Roles.ADMIN
 
 
 class IsAdminOrReadOnly(BasePermission):
@@ -27,8 +22,4 @@ class IsAdminOrReadOnly(BasePermission):
         if request.method in SAFE_METHODS:
             return True
 
-        return (
-            request.user.is_authenticated
-            and request.auth
-            and request.auth.get("role") == Roles.ADMIN
-        )
+        return request.user.is_authenticated and request.user.role == Roles.ADMIN
