@@ -24,6 +24,8 @@ class UserManager(BaseUserManager):
         extra_fields.setdefault("role", Roles.GAMER)
         extra_fields.setdefault("is_active", True)
         user = self.model(username=username, email=email, **extra_fields)
+        if not password:
+            raise ValueError("Password must be provided")
         user.set_password(password)
         user.save(using=self._db)
         return user

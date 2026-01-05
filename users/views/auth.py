@@ -30,7 +30,6 @@ class RegisterAPIView(APIView):
 
         return Response(
             {
-                "message": "User registered successfully",
                 "data": {
                     "username": user.username,
                     "email": user.email,
