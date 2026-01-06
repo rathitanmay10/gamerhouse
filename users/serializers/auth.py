@@ -49,6 +49,11 @@ class RegisterSerializer(serializers.ModelSerializer):
         user = User.all_objects.filter(username=value).first()
 
         if user:
+            if not user.is_active:
+                raise serializers.ValidationError(
+                    "This account is disabled. Please contact support.",
+                    code="inactive",
+                )
             raise serializers.ValidationError(
                 "Username already exists.",
                 code="unique",
@@ -65,8 +70,8 @@ class RegisterSerializer(serializers.ModelSerializer):
         if user:
             if not user.is_active:
                 raise serializers.ValidationError(
-                    "This user is disabled. Please contact support.",
-                    code="unique",
+                    "This account is disabled. Please contact support.",
+                    code="inactive",
                 )
             raise serializers.ValidationError(
                 "Email already exists.",
@@ -113,7 +118,7 @@ class LoginSerializer(serializers.Serializer):
             raise serializers.ValidationError("Username and password are required.")
         user = authenticate(username=username, password=password)
         if not user:
-            raise serializers.ValidationError("Invalid username or password.")
+            raise serializers.ValidationError("Invalid credentials.")
         if not user.is_active or user.deleted_at:
             raise serializers.ValidationError("Account is inactive.")
         refresh = CustomTokenObtainPairSerializer().get_token(user)

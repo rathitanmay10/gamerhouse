@@ -5,18 +5,6 @@ from rest_framework.views import exception_handler
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 
 
-def is_unique_field_error(exc) -> bool:
-    """
-    Detect DRF UniqueValidator errors using error codes (safe & explicit).
-    """
-    for field_errors in exc.detail.values():
-        for error in field_errors:
-            if getattr(error, "code", None) == "unique":
-                return True
-
-    return False
-
-
 def normalize_jwt_error(exc):
     """
     Extract a clean, stable message from SimpleJWT errors.
@@ -38,16 +26,9 @@ def normalize_jwt_error(exc):
 def custom_exception_handler(exc, context):
     """
     Global DRF exception handler with clean HTTP semantics.
-    - 409 for unique constraint violations
-    - 400 for other validation errors
+    - 400 for validation errors
     - Normalized responses for auth, permission, and not-found errors
     """
-    if isinstance(exc, ValidationError) and is_unique_field_error(exc):
-        return Response(
-            {"error": exc.detail},
-            status=status.HTTP_409_CONFLICT,
-        )
-
     if isinstance(exc, ValidationError):
         return Response(
             {"error": exc.detail},
