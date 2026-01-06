@@ -1,5 +1,5 @@
 from rest_framework import status
-from rest_framework.exceptions import APIException, ValidationError
+from rest_framework.exceptions import APIException, ValidationError, NotFound
 from rest_framework.response import Response
 from rest_framework.views import exception_handler
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
@@ -11,7 +11,7 @@ def is_unique_field_error(exc) -> bool:
     """
     for field_errors in exc.detail.values():
         for error in field_errors:
-            if error.code == "unique":
+            if getattr(error, "code", None) == "unique":
                 return True
 
     return False
@@ -58,6 +58,12 @@ def custom_exception_handler(exc, context):
         return Response(
             {"error": normalize_jwt_error(exc)},
             status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    if isinstance(exc, NotFound):
+        return Response(
+            {"error": exc.detail},
+            status=status.HTTP_404_NOT_FOUND,
         )
 
     if isinstance(exc, APIException):

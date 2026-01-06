@@ -12,3 +12,14 @@ class Roles(TextChoices):
 
     ADMIN = "admin", "Admin"
     GAMER = "gamer", "Gamer"
+
+
+class Status(TextChoices):
+    """
+    Game status values used to track a user's progress.
+    """
+
+    WISHLIST = "wishlist", "Wishlist"
+    PLAYING = "playing", "Playing"
+    COMPLETED = "completed", "Completed"
+    DROPPED = "dropped", "Dropped"
