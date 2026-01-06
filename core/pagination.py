@@ -1,7 +1,7 @@
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
-from core.constants import MAX_PAGE_SIZE, PAGE_SIZE
+from core.config import MAX_PAGE_SIZE, PAGE_SIZE
 
 
 class DefaultPagination(PageNumberPagination):
