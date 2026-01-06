@@ -29,9 +29,11 @@ class User(AbstractUser):
 
     def soft_delete(self):
         """Soft delete the user by disabling login and recording deletion time."""
-        self.deleted_at = timezone.now()
+        now = timezone.now()
+        self.deleted_at = now
         self.is_active = False
         self.save()
+        self.games.update(deleted_at=now)
 
     def delete(self, *args, **kwargs):
         """Override delete to enforce soft deletion."""
