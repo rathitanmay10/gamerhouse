@@ -2,22 +2,16 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.views import TokenObtainPairView
 
-from users.serializers import (
-    CustomTokenObtainPairSerializer,
-    LogoutSerializer,
-    RegisterSerializer,
-)
+from users.serializers import LoginSerializer, LogoutSerializer, RegisterSerializer
 
 
 class RegisterAPIView(APIView):
     """
-    API endpoint for user registration.
+    Register a new user account.
 
-    Accepts user credentials and profile information,
-    creates a new user account, and returns a minimal
-    confirmation response on success.
+    Accepts user details, creates the user,
+    and returns basic account information.
     """
 
     permission_classes = [AllowAny]
@@ -30,33 +24,35 @@ class RegisterAPIView(APIView):
 
         return Response(
             {
-                "data": {
-                    "username": user.username,
-                    "email": user.email,
-                },
+                "username": user.username,
+                "email": user.email,
             },
             status=status.HTTP_201_CREATED,
         )
 
 
-class LoginView(TokenObtainPairView):
+class LoginView(APIView):
     """
-    JWT-based login endpoint.
-
-    Authenticates user credentials and returns
-    an access/refresh token pair.
+    Authenticate a user and issue JWT tokens.
     """
 
     permission_classes = [AllowAny]
-    serializer_class = CustomTokenObtainPairSerializer
+
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        return Response(
+            serializer.validated_data,
+            status=status.HTTP_200_OK,
+        )
 
 
 class LogoutAPIView(APIView):
     """
-    API endpoint for logging out an authenticated user.
+    Log out the authenticated user.
 
-    Requires a valid refresh token and invalidates it
-    by adding it to the blacklist.
+    Invalidates the provided refresh token.
     """
 
     permission_classes = [IsAuthenticated]

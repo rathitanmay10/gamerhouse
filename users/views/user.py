@@ -1,5 +1,7 @@
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from rest_framework import status
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
@@ -10,6 +12,7 @@ from rest_framework_simplejwt.token_blacklist.models import (
 )
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from core.enums import Roles
 from core.permissions import IsAdminRole
 from users.serializers import (
     AdminUserSerializer,
@@ -22,20 +25,13 @@ User = get_user_model()
 
 class AdminUserViewSet(ModelViewSet):
     """
-    Admin user management endpoints.
+    Admin-only endpoints for managing user accounts.
 
-    Allows admins to:
-    - List users
-    - Retrieve a specific user
-    - Partially update user details
-    - Delete users
-
-    When a user is deleted, all outstanding JWTs issued to that user
-    are blacklisted to immediately revoke access.
+    Supports listing, retrieving, updating, and deleting users.
+    User deletion revokes all issued JWTs for immediate access removal.
     """
 
     permission_classes = [IsAdminRole]
-    queryset = User.all_objects.all()
     serializer_class = AdminUserSerializer
     http_method_names = ["get", "patch", "delete", "options", "head"]
 
@@ -57,13 +53,13 @@ class AdminUserViewSet(ModelViewSet):
 
         return qs
 
+    @transaction.atomic
     def perform_destroy(self, instance):
         """
-        Revoke all active JWTs for the user and delete the account.
-
-        All outstanding access and refresh tokens associated with the
-        user are blacklisted before deletion to prevent further use.
+        Soft-delete the user and revoke all outstanding JWTs.
         """
+        if instance == self.request.user:
+            raise ValidationError("Admins cannot delete their own account")
 
         tokens = OutstandingToken.objects.filter(user=instance)
         for token in tokens:
@@ -75,14 +71,7 @@ class MeAPIView(APIView):
     """
     Self-service endpoint for the authenticated user.
 
-    Allows an authenticated user to:
-    - Retrieve their own profile
-    - Partially update their profile
-    - Delete their own account
-
-    Account deletion requires a valid refresh token belonging to the
-    authenticated user. On successful deletion, the refresh token is
-    blacklisted to immediately revoke access.
+    Allows viewing, updating, and deleting the user's own account.
     """
 
     def get(self, request):
@@ -95,27 +84,26 @@ class MeAPIView(APIView):
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @transaction.atomic
     def delete(self, request):
+        """
+        Delete the authenticated user's account.
+
+        Requires a valid refresh token belonging to the user.
+        """
+        if request.user.role == Roles.ADMIN:
+            raise PermissionDenied("Admin accounts cannot be deleted via this endpoint")
         refresh = request.data.get("refresh")
         if not refresh:
-            return Response(
-                {"detail": "Refresh token required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            raise ValidationError({"refresh": "Refresh token required"})
 
         try:
             token = RefreshToken(refresh)
             if str(token["user_id"]) != str(request.user.id):
-                return Response(
-                    {"detail": "Token does not belong to authenticated user"},
-                    status=status.HTTP_403_FORBIDDEN,
-                )
+                raise PermissionDenied("Token does not belong to authenticated user")
             token.blacklist()
         except TokenError:
-            return Response(
-                {"detail": "Invalid or expired refresh token"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            raise ValidationError({"refresh": "Invalid or expired refresh token"})
 
         request.user.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

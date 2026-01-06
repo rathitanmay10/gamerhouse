@@ -1,4 +1,4 @@
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, authenticate
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from rest_framework_simplejwt.exceptions import TokenError
@@ -13,11 +13,10 @@ class RegisterSerializer(serializers.ModelSerializer):
     Serializer for registering a new user.
 
     Responsibilities:
-    - Validate password strength using Django validators
+    - Validate password strength
     - Ensure password and confirm_password match
-    - Prevent registration if username/email already exists
-    - Block registration for inactive users
-    - Create user using the UserManager
+    - Enforce username and email uniqueness
+    - Create user via UserManager
     """
 
     password = serializers.CharField(write_only=True, validators=[validate_password])
@@ -33,6 +32,10 @@ class RegisterSerializer(serializers.ModelSerializer):
             "last_name",
             "confirm_password",
         )
+        extra_kwargs = {
+            "username": {"validators": []},
+            "email": {"validators": []},
+        }
 
     def validate(self, attrs):
         if attrs["password"] != attrs["confirm_password"]:
@@ -41,19 +44,11 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     def validate_username(self, value):
         """
-        Field-level validation for username.
-
-        - Blocks registration if an inactive user exists
-        - Raises a unique constraint error for active users
+        Reject registration if the username already exists.
         """
         user = User.all_objects.filter(username=value).first()
 
         if user:
-            if not user.is_active:
-                raise serializers.ValidationError(
-                    "User exists already, contact admin.",
-                    code="unique",
-                )
             raise serializers.ValidationError(
                 "Username already exists.",
                 code="unique",
@@ -63,17 +58,14 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     def validate_email(self, value):
         """
-        Field-level validation for email.
-
-        - Blocks registration if an inactive user exists
-        - Raises a unique constraint error for active users
+        Reject registration if the email already exists.
         """
         user = User.all_objects.filter(email=value).first()
 
         if user:
             if not user.is_active:
                 raise serializers.ValidationError(
-                    "User exists already, contact admin.",
+                    "This user is disabled. Please contact support.",
                     code="unique",
                 )
             raise serializers.ValidationError(
@@ -85,9 +77,8 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         """
-        Create user via UserManager to ensure:
-        - password hashing
-        - default role assignment
+        Create user using the UserManager to ensure
+        proper password hashing and defaults.
         """
 
         validated_data.pop("confirm_password")
@@ -105,6 +96,31 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token = super().get_token(user)
         token["role"] = user.role
         return token
+
+
+class LoginSerializer(serializers.Serializer):
+    """
+    Validate credentials and return JWT access and refresh tokens.
+    """
+
+    username = serializers.CharField()
+    password = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        username = attrs.get("username", "").strip()
+        password = attrs.get("password")
+        if not username or not password:
+            raise serializers.ValidationError("Username and password are required.")
+        user = authenticate(username=username, password=password)
+        if not user:
+            raise serializers.ValidationError("Invalid username or password.")
+        if not user.is_active or user.deleted_at:
+            raise serializers.ValidationError("Account is inactive.")
+        refresh = CustomTokenObtainPairSerializer().get_token(user)
+        return {
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+        }
 
 
 class LogoutSerializer(serializers.Serializer):

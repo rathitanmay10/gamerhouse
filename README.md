@@ -64,10 +64,11 @@ The games module allows users to manage their personal game library with progres
 * Exposed via DRF `ModelViewSet` and router
 
 ## Tech Stack
-
-* Python
+* Python 
 * Django
 * Django REST Framework
+* PostgreSQL
+* SimpleJWT 
 
 ## API Conventions
 
@@ -100,7 +101,78 @@ The games module allows users to manage their personal game library with progres
   }
 }
 ```
+## Project Setup
 
+### 1. Clone the repository
+```bash
+git clone https://github.com/tanmayrathi-gkmit/gamerhouse.git
+cd gamerhouse
+```
+
+### Install uv if not present
+``` bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+### Create virtual environment & install dependencies
+```bash
+uv venv
+source .venv/bin/activate
+uv sync
+```
+### Environment variables
+Copy the example environment file and Update values as needed.
+
+`.env.example`
+```
+# Django settings
+SECRET_KEY=secret_key
+DEBUG=True
+ALLOWED_HOSTS=127.0.0.1,localhost
+
+# Database configuration (PostgreSQL)
+DB_ENGINE=django.db.backends.postgresql
+DB_NAME=database_name
+DB_USER=user
+DB_PASSWORD=password
+DB_HOST=localhost
+DB_PORT=5432
+```
+> `SECRET_KEY` must be changed for any non-local environment.
+
+### Database Setup
+Ensure PostgreSQL is running and the database exists:
+```
+createdb database_name
+```
+Apply migrations:
+```
+python manage.py migrate
+```
+
+### Seeding Base Data (Required)
+Run the seed command to create essential data:
+```
+python manage.py seed_db
+```
+
+**Seeded data**
+
+* Admin user
+* Game genres
+* Supported platforms
+
+**Default admin credentials**
+Email:    admin@gamerhouse.dev
+Username: admin
+Password: admin
+
+> Change this password immediately after first login.
+
+### Running the Server
+```
+python manage.py runserver
+```
 ## Status
 
 Core authentication, user management, API infrastructure, catalog reference data,
