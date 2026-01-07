@@ -41,3 +41,4 @@ class User(AbstractUser):
 
     class Meta:
         db_table = "users"
+        ordering = ["-created_at"]
