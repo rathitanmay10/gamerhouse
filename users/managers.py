@@ -41,10 +41,3 @@ class UserManager(BaseUserManager):
         return self.create_user(username, email, password, **extra_fields)
 
 
-class AllUserManager(BaseUserManager):
-    """
-    User manager that returns all users, including inactive or soft-deleted ones.
-    """
-
-    def get_queryset(self):
-        return super().get_queryset()
