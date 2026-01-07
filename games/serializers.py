@@ -32,6 +32,23 @@ class GameSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("id", "user", "created_at", "updated_at", "deleted_at")
 
+    def validate_title(self, value):
+        request = self.context.get("request")
+        if not request or not request.user:
+            raise serializers.ValidationError("Unable to determine user.")
+        user = request.user
+        normalized = " ".join(value.split())
+        qs = Game.objects.filter(user=user, title__iexact=normalized)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+
+        if qs.exists():
+            raise serializers.ValidationError(
+                "Game with this title already exists.",
+                code="unique",
+            )
+        return normalized
+
     def validate_status(self, value):
         """
         Ensure the status value is one of the allowed enum choices.
@@ -49,6 +66,16 @@ class GameSerializer(serializers.ModelSerializer):
         if value is not None and not 0 <= value <= 5:
             raise serializers.ValidationError(
                 "Personal rating must be between 0 and 5."
+            )
+        return value
+
+    def validate_completed_at(self, value):
+        if value is None:
+            return value
+        present_date = timezone.now().date()
+        if value > present_date:
+            raise serializers.ValidationError(
+                f"Completed at cannot be in the future. (Present Date: {present_date})"
             )
         return value
 

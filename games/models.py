@@ -35,7 +35,7 @@ class Game(BaseModel):
     status = models.CharField(
         max_length=20, choices=Status.choices, default=Status.WISHLIST
     )
-    hours_played = models.PositiveSmallIntegerField(blank=True, null=True)
+    hours_played = models.PositiveIntegerField(blank=True, null=True)
     personal_rating = models.PositiveSmallIntegerField(blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
     completed_at = models.DateField(blank=True, null=True)

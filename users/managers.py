@@ -39,5 +39,3 @@ class UserManager(BaseUserManager):
             raise ValueError("Superuser must have ADMIN role")
 
         return self.create_user(username, email, password, **extra_fields)
-
-
