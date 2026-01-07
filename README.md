@@ -94,11 +94,7 @@ The games module allows users to manage their personal game library with progres
 
 ```json
 {
-  "error": {
-    "code": "validation_error",
-    "message": "Invalid request data",
-    "details": { ... }
-  }
+  "error": { ... }
 }
 ```
 ## Project Setup
