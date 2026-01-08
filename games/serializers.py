@@ -34,8 +34,6 @@ class GameSerializer(serializers.ModelSerializer):
 
     def validate_title(self, value):
         request = self.context.get("request")
-        if not request or not request.user:
-            raise serializers.ValidationError("Unable to determine user.")
         user = request.user
         normalized = " ".join(value.split())
         qs = Game.objects.filter(user=user, title__iexact=normalized)
@@ -104,13 +102,6 @@ class GameSerializer(serializers.ModelSerializer):
                 attrs["completed_at"] = timezone.now().date()
         else:
             if completed_at is not None:
-                raise serializers.ValidationError(
-                    {
-                        "completed_at": (
-                            "completed_at is only allowed when status is COMPLETED."
-                        )
-                    }
-                )
-            attrs["completed_at"] = None
+                attrs["completed_at"] = None
 
         return attrs
