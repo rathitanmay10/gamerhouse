@@ -1,7 +1,7 @@
 from rest_framework.viewsets import ModelViewSet
 
 from catalog.models import Platform
-from catalog.serializers.platform import PlatformSerializer
+from catalog.serializers import PlatformSerializer
 from core.permissions import IsAdminOrReadOnly
 
 
@@ -16,4 +16,4 @@ class PlatformViewSet(ModelViewSet):
     queryset = Platform.objects.all()
     serializer_class = PlatformSerializer
     permission_classes = [IsAdminOrReadOnly]
-    http_method_names = ["get", "post", "patch", "head", "options"]
+    http_method_names = ["get", "post", "patch", "delete", "head", "options"]

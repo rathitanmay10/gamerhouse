@@ -1,9 +1,8 @@
-class GameQueryFilter:
+class UserGameQueryFilter:
     """
-    Query-parameter filters for Game list endpoint.
+    Query-parameter filters for User Game list endpoint.
 
     Supported query parameters:
-    - search_query : case-insensitive match on game title
     - status       : comma-separated list
     - genre        : comma-separated genre IDs
     - platform     : comma-separated platform IDs
@@ -24,19 +23,12 @@ class GameQueryFilter:
         self.params = params
 
     def apply(self):
-        self.search_title()
         self.filter_status()
         self.filter_genre()
         self.filter_platform()
         self.filter_min_rating()
         self.filter_min_hours()
         return self.qs
-
-    def search_title(self):
-        value = self.params.get("search_query")
-        if not value:
-            return
-        self.qs = self.qs.filter(title__icontains=value)
 
     def filter_status(self):
         value = self.params.get("status")
