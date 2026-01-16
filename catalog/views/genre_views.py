@@ -1,7 +1,7 @@
 from rest_framework.viewsets import ModelViewSet
 
 from catalog.models import Genre
-from catalog.serializers.genre import GenreSerializer
+from catalog.serializers import GenreSerializer
 from core.permissions import IsAdminOrReadOnly
 
 
@@ -16,4 +16,4 @@ class GenreViewSet(ModelViewSet):
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
     permission_classes = [IsAdminOrReadOnly]
-    http_method_names = ["get", "post", "patch", "head", "options"]
+    http_method_names = ["get", "post", "patch", "delete", "head", "options"]

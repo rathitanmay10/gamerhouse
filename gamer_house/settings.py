@@ -27,9 +27,9 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     "users",
-    "games",
     "catalog",
     "core",
+    "user_games",
 ]
 
 MIDDLEWARE = [
