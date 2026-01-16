@@ -24,6 +24,7 @@ The catalog module provides reference entities used across the platform.
 ### Entities
 * **Genre** – Game categories (e.g., RPG, Action)
 * **Platform** – Supported platforms (e.g., PC, Console)
+* **Game** – A user-owned game entry with status, rating, and playtime
 
 ### API Access Rules
 * **Read access**: All users
@@ -35,12 +36,12 @@ The catalog module provides reference entities used across the platform.
 * Admin-managed reference data
 * Exposed via DRF `ModelViewSet` and routers
 
-## Games Module
+## UserGames Module
 
-The games module allows users to manage their personal game library with progress tracking and metadata.
+The user games module allows users to manage their personal game library with progress tracking and metadata.
 
 ### Entity
-* **Game** – A user-owned game entry with status, rating, and playtime
+* **UserGame** – A user-owned game entry with status, rating, and playtime
 
 ### Core Capabilities
 * Create, update, soft-delete personal game entries
