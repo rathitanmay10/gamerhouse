@@ -18,7 +18,16 @@ class User(BaseModel, AbstractUser):
 
     email = models.EmailField(unique=True)
     role = models.CharField(max_length=20, choices=Roles.choices, default=Roles.GAMER)
-
+    tenant = models.ForeignKey(
+        "tenants.Tenant",
+        related_name="users",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+    )
+    is_verified = models.BooleanField(default=False)
+    USERNAME_FIELD = "email"
+    REQUIRED_FIELDS = ["username"]
     objects = UserManager()
 
     def soft_delete(self):
@@ -27,7 +36,6 @@ class User(BaseModel, AbstractUser):
         self.deleted_at = now
         self.is_active = False
         self.save()
-        self.games.update(deleted_at=now)
 
     def delete(self, *args, **kwargs):
         """Override delete to enforce soft deletion."""
@@ -36,3 +44,9 @@ class User(BaseModel, AbstractUser):
     class Meta:
         db_table = "users"
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["tenant", "role"], name="idx_user_tenant_role"),
+            models.Index(
+                fields=["email", "is_verified"], name="idx_user_email_verified"
+            ),
+        ]
