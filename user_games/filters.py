@@ -1,83 +1,52 @@
-class UserGameQueryFilter:
-    """
-    Query-parameter filters for User Game list endpoint.
+import uuid
 
-    Supported query parameters:
-    - status       : comma-separated list
-    - genre        : comma-separated genre IDs
-    - platform     : comma-separated platform IDs
-    - min_rating   : minimum personal rating (integer)
-    - min_hours    : minimum hours played (integer)
+from django_filters.rest_framework import CharFilter, FilterSet, NumberFilter
 
-    Behavior notes:
-    - All filters are optional; missing parameters are ignored.
-    - Comma-separated values are split, trimmed, and applied using `__in`.
-    - Invalid values do not raise errors but result in an empty queryset
-      (fail-soft behavior).
+from core.enums import Status
+from user_games.models import UserGame
 
-    Invalid values result in an empty queryset (fail-soft).
-    """
 
-    def __init__(self, queryset, params):
-        self.qs = queryset
-        self.params = params
+class UserGameFilter(FilterSet):
+    platform = CharFilter(field_name="platform_id", method="filter_platform_safe")
+    status = CharFilter(choices=Status.choices, method="filter_status_safe")
+    min_hours_played = NumberFilter(
+        field_name="hours_played", lookup_expr="gte", method="filter_min_hours_played"
+    )
+    min_rating = NumberFilter(
+        field_name="personal_rating", lookup_expr="gte", method="filter_min_rating"
+    )
 
-    def apply(self):
-        self.filter_status()
-        self.filter_genre()
-        self.filter_platform()
-        self.filter_min_rating()
-        self.filter_min_hours()
-        return self.qs
+    class Meta:
+        model = UserGame
+        fields = ["status", "platform", "hours_played", "personal_rating"]
 
-    def filter_status(self):
-        value = self.params.get("status")
-        if not value:
-            return
+    def filter_platform_safe(self, queryset, name, value):
+        uuids = []
+        for val in value.split(","):
+            try:
+                uuids.append(uuid.UUID(val.strip()))
+            except (ValueError, TypeError):
+                continue
+        if uuids:
+            return queryset.filter(platform_id__in=uuids)
+        return queryset
 
-        values = self.parse_str_list(value)
+    def filter_status_safe(self, queryset, name, value):
+        statuses = [
+            v.strip() for v in value.split(",") if v.strip() in dict(Status.choices)
+        ]
+        if statuses:
+            return queryset.filter(status__in=statuses)
+        return queryset
 
-        self.qs = self.qs.filter(status__in=values)
-
-    def filter_genre(self):
-        value = self.params.get("genre")
-        if not value:
-            return
-
-        ids = self.parse_str_list(value)
-
-        self.qs = self.qs.filter(genre_id__in=ids)
-
-    def filter_platform(self):
-        value = self.params.get("platform")
-        if not value:
-            return
-
-        ids = self.parse_str_list(value)
-
-        self.qs = self.qs.filter(platform_id__in=ids)
-
-    def filter_min_rating(self):
-        value = self.params.get("min_rating")
-        if not value:
-            return
-
-        number = self.parse_int(value)
-        self.qs = self.qs.filter(personal_rating__gte=number)
-
-    def filter_min_hours(self):
-        value = self.params.get("min_hours")
-        if not value:
-            return
-
-        number = self.parse_int(value)
-        self.qs = self.qs.filter(hours_played__gte=number)
-
-    def parse_int(self, value):
+    def filter_min_hours_played(self, queryset, name, value):
         try:
-            return int(value)
-        except (TypeError, ValueError):
-            return None
+            return queryset.filter(hours_played__gte=int(value))
+        except (ValueError, TypeError):
+            return queryset
 
-    def parse_str_list(self, value):
-        return [v.strip() for v in value.split(",") if v.strip()]
+    def filter_min_rating(self, queryset, name, value):
+        try:
+            return queryset.filter(personal_rating__gte=int(value))
+        except (ValueError, TypeError):
+            return queryset

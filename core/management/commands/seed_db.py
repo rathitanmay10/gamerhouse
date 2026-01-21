@@ -35,21 +35,22 @@ class Command(BaseCommand):
 
     def _seed_users(self):
         user, created = User.all_objects.get_or_create(
-            email="admin@gamerhouse.dev",
+            email="super_admin@mailinator.com",
             defaults={
-                "username": "admin",
-                "role": Roles.ADMIN,
+                "username": "super_admin",
+                "role": Roles.SUPER_ADMIN,
                 "is_staff": True,
                 "is_superuser": True,
+                "is_verified": True,
             },
         )
 
         if created:
             user.set_password("admin")
             user.save()
-            self.stdout.write(self.style.SUCCESS("Created admin user"))
+            self.stdout.write(self.style.SUCCESS("Created super admin user"))
         else:
-            self.stdout.write(self.style.WARNING("Admin user already exists"))
+            self.stdout.write(self.style.WARNING("Super Admin user already exists"))
 
     def _seed_genres(self):
         names = [

@@ -1,29 +1,36 @@
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.db import transaction
 from rest_framework import status
 from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 from rest_framework_simplejwt.exceptions import TokenError
-from rest_framework_simplejwt.token_blacklist.models import (
-    BlacklistedToken,
-    OutstandingToken,
-)
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from core.enums import Roles
-from core.permissions import IsAdminRole
+from core.constants import EMAIL_VERIFY_TTL
+from core.enums import Roles, UserStatus
+from core.permissions import IsSuperAdminRoleOrAdminRole
+from users.helper.auth_tokens import (
+    blacklist_all_refresh_tokens_for_user,
+    revoke_access_token,
+)
+from users.helper.cache_keys import verify_email_key, verify_token_key
+from users.helper.otp_token import generate_email_verification_token
 from users.serializers import (
-    AdminUserSerializer,
     ChangePasswordSerializer,
     SelfUserSerializer,
+    UserCreateSerializer,
+    UserSerializer,
 )
+from users.tasks import send_verification_email
 
 User = get_user_model()
 
 
-class AdminUserViewSet(ModelViewSet):
+class UserViewSet(ModelViewSet):
     """
     Admin-only endpoints for managing user accounts.
 
@@ -31,27 +38,57 @@ class AdminUserViewSet(ModelViewSet):
     User deletion revokes all issued JWTs for immediate access removal.
     """
 
-    permission_classes = [IsAdminRole]
-    serializer_class = AdminUserSerializer
-    http_method_names = ["get", "patch", "delete", "options", "head"]
+    permission_classes = [IsSuperAdminRoleOrAdminRole]
+    http_method_names = ["get", "post", "patch", "delete", "options", "head"]
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return UserCreateSerializer
+
+        return UserSerializer
 
     def get_queryset(self):
-        """
-        Optionally filter users by deletion status.
+        user = self.request.user
 
-        Query params:
-        - status=active   → non-deleted users
-        - status=deleted  → soft-deleted users
-        """
-        qs = User.all_objects.all()
+        if user.role == Roles.SUPER_ADMIN:
+            qs = User.all_objects.filter(role=Roles.ADMIN)
+        elif user.role == Roles.ADMIN:
+            qs = (
+                User.all_objects.filter(tenant_id=user.tenant_id)
+                .exclude(role=Roles.SUPER_ADMIN)
+                .exclude(pk=user.pk)
+            )
+        else:
+            return User.objects.none()
+
         status_param = self.request.query_params.get("status")
 
-        if status_param == "deleted":
+        if status_param == UserStatus.DELETED:
             return qs.filter(deleted_at__isnull=False)
-        if status_param == "active":
+
+        if status_param == UserStatus.ACTIVE:
             return qs.filter(deleted_at__isnull=True)
 
         return qs
+
+    @transaction.atomic
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"].lower()
+        if cache.get(verify_email_key(email)):
+            return Response(
+                {"message": "Verification mail already sent. Verify or resend."},
+                status=status.HTTP_200_OK,
+            )
+        serializer.save()
+        token = generate_email_verification_token(email)
+        cache.set(key=verify_token_key(token), value=email, timeout=EMAIL_VERIFY_TTL)
+        cache.set(key=verify_email_key(email), value=token, timeout=EMAIL_VERIFY_TTL)
+        send_verification_email.delay(email, token)
+        return Response(
+            {"message": "Verification mail sent."}, status=status.HTTP_201_CREATED
+        )
 
     @transaction.atomic
     def perform_destroy(self, instance):
@@ -61,9 +98,7 @@ class AdminUserViewSet(ModelViewSet):
         if instance == self.request.user:
             raise ValidationError("Admins cannot delete their own account")
 
-        tokens = OutstandingToken.objects.filter(user=instance)
-        for token in tokens:
-            BlacklistedToken.objects.get_or_create(token=token)
+        blacklist_all_refresh_tokens_for_user(instance)
         instance.delete()
 
 
@@ -73,6 +108,8 @@ class MeAPIView(APIView):
 
     Allows viewing, updating, and deleting the user's own account.
     """
+
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         serializer = SelfUserSerializer(request.user)
@@ -91,7 +128,7 @@ class MeAPIView(APIView):
 
         Requires a valid refresh token belonging to the user.
         """
-        if request.user.role == Roles.ADMIN:
+        if request.user.role == Roles.ADMIN or request.user.role == Roles.SUPER_ADMIN:
             raise PermissionDenied("Admin accounts cannot be deleted via this endpoint")
         refresh = request.data.get("refresh")
         if not refresh:
@@ -104,7 +141,8 @@ class MeAPIView(APIView):
             token.blacklist()
         except TokenError:
             raise ValidationError({"refresh": "Invalid or expired refresh token"})
-
+        revoke_access_token(request.auth)
+        blacklist_all_refresh_tokens_for_user(request.user)
         request.user.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -117,8 +155,14 @@ class ChangePasswordAPIView(APIView):
     On success, no response body is returned.
     """
 
+    permission_classes = [IsAuthenticated]
+
+    @transaction.atomic
     def post(self, request):
-        serializer = ChangePasswordSerializer(user=request.user, data=request.data)
+        serializer = ChangePasswordSerializer(
+            data=request.data,
+            context={"request": request},
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(None, status=status.HTTP_200_OK)

@@ -1,3 +1,4 @@
+from django.db import IntegrityError
 from rest_framework import status
 from rest_framework.exceptions import APIException, NotFound, ValidationError
 from rest_framework.response import Response
@@ -32,6 +33,12 @@ def custom_exception_handler(exc, context):
     if isinstance(exc, ValidationError):
         return Response(
             {"error": exc.detail},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if isinstance(exc, IntegrityError):
+        return Response(
+            {"error": "Invalid data or constraint violation."},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
