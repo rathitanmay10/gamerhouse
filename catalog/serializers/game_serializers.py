@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from catalog.models import Game
+from catalog.models import Game, Genre, Platform
 
 
 class GameSerializer(serializers.ModelSerializer):

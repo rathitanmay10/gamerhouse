@@ -4,6 +4,10 @@ from core.models import BaseModel
 
 
 class Game(BaseModel):
+    """
+    Represents a game with genre and platform associations.
+    """
+
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     release_date = models.DateField(blank=True, null=True)
