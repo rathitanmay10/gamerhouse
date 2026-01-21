@@ -8,14 +8,20 @@ class UserGame(BaseModel):
     user = models.ForeignKey(
         "users.User", related_name="user_games", on_delete=models.CASCADE
     )
-    game = models.ForeignKey(
-        "catalog.Game", related_name="user_games", on_delete=models.CASCADE
+    tenant_game = models.ForeignKey(
+        "tenant_games.TenantGame",
+        on_delete=models.CASCADE,
+        null=False,
+        blank=False,
     )
     platform = models.ForeignKey(
         "catalog.Platform", related_name="user_games", on_delete=models.CASCADE
     )
     status = models.CharField(
         max_length=20, choices=Status.choices, default=Status.WISHLIST
+    )
+    tenant = models.ForeignKey(
+        "tenants.Tenant", related_name="user_games", on_delete=models.CASCADE
     )
     hours_played = models.PositiveIntegerField(blank=True, null=True)
     personal_rating = models.PositiveSmallIntegerField(blank=True, null=True)
@@ -28,10 +34,8 @@ class UserGame(BaseModel):
         indexes = [
             models.Index(fields=["user", "status"]),
             models.Index(fields=["created_at"]),
+            models.Index(fields=["user", "tenant"]),
         ]
-
-    def __str__(self):
-        return f"{self.user.username} - {self.game.title}"
 
 
 class UserGameNote(BaseModel):
@@ -39,10 +43,10 @@ class UserGameNote(BaseModel):
         "user_games.UserGame", related_name="notes", on_delete=models.CASCADE
     )
     note = models.TextField()
+    tenant = models.ForeignKey(
+        "tenants.Tenant", related_name="notes", on_delete=models.CASCADE
+    )
 
     class Meta:
         db_table = "user_game_notes"
         ordering = ["-created_at"]
-
-    def __str__(self):
-        return f"Note for {self.user_game.user.username} - {self.user_game.game.title}"
