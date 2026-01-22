@@ -1,12 +1,20 @@
 from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import status
+from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from core.enums import Roles
 from tenant_games.filters import TenantGameFilter
 from tenant_games.models import TenantGame
 from tenant_games.permissions import TenantGamePermission
-from tenant_games.serializers import TenantGameMappingSerializer, TenantGameSerializer
+from tenant_games.serializers import (
+    TenantGameBulkAddSerializer,
+    TenantGameBulkDeleteSerializer,
+    TenantGameMappingSerializer,
+    TenantGameSerializer,
+)
 
 
 class TenantGameViewSet(ModelViewSet):
@@ -47,3 +55,23 @@ class TenantGameViewSet(ModelViewSet):
             serializer.save(tenant=user.tenant)
         else:
             raise PermissionDenied("Not allowed.")
+
+    @action(methods=["post"], detail=False, url_path="bulk-add")
+    def bulk_add(self, request):
+        serializer = TenantGameBulkAddSerializer(
+            data=request.data,
+            context={"request": request},
+        )
+        serializer.is_valid(raise_exception=True)
+        result = serializer.save()
+        return Response(result, status=status.HTTP_200_OK)
+
+    @action(methods=["post"], detail=False, url_path="bulk-delete")
+    def bulk_delete(self, request):
+        serializer = TenantGameBulkDeleteSerializer(
+            data=request.data,
+            context={"request": request},
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
