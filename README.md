@@ -283,6 +283,25 @@ The API will be available at `http://localhost:8000/api/v1/`
 * `POST /api/v1/tenant-games/` – Add game to tenant
 * `PATCH /api/v1/tenant-games/<id>/` – Update tenant game
 * `DELETE /api/v1/tenant-games/<id>/` – Remove from tenant
+* `POST /api/v1/tenant-games/bulk-add/` – Bulk add games by IDs, platforms, or genres
+* `POST /api/v1/tenant-games/bulk-delete/` – Bulk remove multiple games from tenant
+
+**Bulk Add Request:**
+```json
+{
+  "games": ["uuid1", "uuid2"],
+  "platforms": ["platform-uuid"],
+  "genres": ["genre-uuid"],
+  "exclude_games": ["uuid3"]
+}
+```
+
+**Bulk Delete Request:**
+```json
+{
+  "tenant_games": ["tenant-game-uuid1", "tenant-game-uuid2"]
+}
+```
 
 ### User Games
 * `GET /api/v1/user-games/` – List user games (with filters)
