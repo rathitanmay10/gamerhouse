@@ -1,8 +1,7 @@
 from django.db import transaction
-from django.utils import timezone
 from rest_framework.viewsets import ModelViewSet
 
-from core.enums import Roles
+from core.enums import Roles, TenantStatus
 from tenants.models import Tenant
 from tenants.permissions import IsSuperAdminOrTenantAdminGetOwnTenant
 from tenants.serializers import TenantSerializer
@@ -25,4 +24,9 @@ class TenantViewSet(ModelViewSet):
 
     @transaction.atomic
     def perform_destroy(self, instance):
-        instance.delete()
+        """
+        Soft-delete tenant by marking it INACTIVE instead of deleting.
+        """
+        if instance.status != TenantStatus.INACTIVE:
+            instance.status = TenantStatus.INACTIVE
+            instance.save(update_fields=["status"])
