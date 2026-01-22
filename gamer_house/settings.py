@@ -96,7 +96,7 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "users.authentication.BlacklistJWTAuthentication",
+        "users.authentication.TenantJWTAuthentication",
     ],
     "EXCEPTION_HANDLER": "core.exceptions.custom_exception_handler",
     "DEFAULT_PAGINATION_CLASS": "core.pagination.DefaultPagination",
@@ -139,7 +139,6 @@ CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:63
 CELERY_TASK_TIME_LIMIT = int(os.getenv("CELERY_TASK_TIME_LIMIT", 30))
 CELERY_TASK_SOFT_TIME_LIMIT = int(os.getenv("CELERY_TASK_SOFT_TIME_LIMIT", 25))
 CELERY_RESULT_EXPIRES = int(os.getenv("CELERY_RESULT_EXPIRES", 3600))
-CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 
 FRONTEND_URL = "http://localhost:8000/"
 

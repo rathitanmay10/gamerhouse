@@ -5,7 +5,7 @@ from rest_framework import serializers
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from core.enums import Roles
+from core.enums import Roles, TenantStatus
 from users.helper.auth_tokens import blacklist_refresh_token, revoke_access_token
 from users.helper.user_create_helper import update_user_fields
 
@@ -140,6 +140,15 @@ class LoginSerializer(serializers.Serializer):
             raise serializers.ValidationError("User not verified.")
         if not user.is_active or user.deleted_at is not None:
             raise serializers.ValidationError("Account is inactive.")
+        if user.role != Roles.SUPER_ADMIN:
+            if not user.tenant:
+                raise serializers.ValidationError(
+                    "User is not associated with any tenant."
+                )
+            if user.tenant.status != TenantStatus.ACTIVE:
+                raise serializers.ValidationError(
+                    "Tenant is not active. Please contact support."
+                )
         return attrs
 
 

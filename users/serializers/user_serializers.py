@@ -73,7 +73,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
             role = Roles.ADMIN
         elif creator.role == Roles.ADMIN:
             tenant = creator.tenant
-            role = validated_data.get("role", None)
+            role = Roles.GAMER
         else:
             raise PermissionDenied("You cannot create users.")
 

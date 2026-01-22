@@ -1,12 +1,13 @@
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.db import transaction
-from django_redis import get_redis_connection
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.exceptions import InvalidToken
+from rest_framework_simplejwt.views import TokenRefreshView
 
 from core.constants import (
     EMAIL_VERIFY_TTL,
@@ -14,6 +15,7 @@ from core.constants import (
     MAX_OTP_ATTEMPTS,
     PASSWORD_RESET_TTL,
 )
+from core.enums import Roles, TenantStatus
 from users.helper.auth_tokens import blacklist_all_refresh_tokens_for_user
 from users.helper.cache_keys import (
     login_otp_attempts_key,
@@ -54,6 +56,8 @@ def send_otp(email: str):
     otp = generate_otp()
     hashed_otp = generate_otp_hash(otp)
     cache.set(login_otp_key(email), hashed_otp, timeout=LOGIN_OTP_TTL)
+    # otp_key = login_otp_key(email)
+    # print("Retrieved OTP:", cache.get(otp_key))
     send_otp_email.delay(email, otp)
     return otp
 
@@ -180,7 +184,7 @@ class LoginView(APIView):
             )
         send_otp(email)
         return Response(
-            {"message": "Password verified. OTP sent to email."},
+            {"message": "OTP sent to email."},
             status=status.HTTP_200_OK,
         )
 
@@ -199,7 +203,7 @@ class LoginVerifyAPIView(APIView):
         attempts_key = login_otp_attempts_key(email)
 
         cached_otp = cache.get(otp_key)
-        if not cached_otp:
+        if cached_otp is None:
             cache.delete(attempts_key)
             raise ValidationError("OTP expired. Please request a new one.")
 
@@ -212,30 +216,22 @@ class LoginVerifyAPIView(APIView):
         except User.DoesNotExist:
             raise ValidationError("Authentication failed. Please try again.")
 
-        redis = get_redis_connection("default")
-        ttl = redis.ttl(otp_key)
-
-        if ttl <= 0:
-            cache.delete_many([otp_key, attempts_key])
-            raise ValidationError("OTP expired. Please request a new one.")
-
-        current_attempts = redis.get(attempts_key)
-        current_attempts = int(current_attempts) if current_attempts else 0
+        current_attempts = cache.get(attempts_key) or 0
+        current_attempts = int(current_attempts)
 
         if current_attempts >= MAX_OTP_ATTEMPTS:
             cache.delete_many([otp_key, attempts_key])
             raise ValidationError("Too many invalid attempts. OTP expired.")
 
         if not verify_otp_hash(otp, cached_otp):
-            attempts = redis.incr(attempts_key)
-            if attempts == 1:
-                redis.expire(attempts_key, ttl)
-
-            remaining = MAX_OTP_ATTEMPTS - attempts
+            current_attempts += 1
+            cache.set(attempts_key, current_attempts, timeout=LOGIN_OTP_TTL)
+            remaining = MAX_OTP_ATTEMPTS - current_attempts
             if remaining <= 0:
                 cache.delete_many([otp_key, attempts_key])
                 raise ValidationError("Too many invalid attempts. OTP expired.")
             raise ValidationError(f"Invalid OTP. {remaining} attempt(s) remaining.")
+
         cache.delete_many([otp_key, attempts_key])
         refresh = CustomTokenObtainPairSerializer().get_token(user)
         return Response(
@@ -279,6 +275,34 @@ class LogoutAPIView(APIView):
         serializer.save()
 
         return Response(status=status.HTTP_200_OK)
+
+
+class TenantTokenRefreshView(TokenRefreshView):
+    """
+    Overrides token refresh to enforce tenant status.
+    """
+
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+
+        if response.status_code == 200:
+            from rest_framework_simplejwt.tokens import AccessToken
+
+            access_token_str = response.data.get("access")
+            token = AccessToken(access_token_str)
+            user_id = token["user_id"]
+
+            from users.models import User
+
+            user = User.objects.select_related("tenant").get(id=user_id)
+
+            if user.role != Roles.SUPER_ADMIN:
+                if not user.tenant:
+                    raise InvalidToken("User is not associated with any tenant.")
+                if user.tenant.status != TenantStatus.ACTIVE:
+                    raise InvalidToken("Tenant is not active. Please contact support.")
+
+        return response
 
 
 class ForgotPasswordAPIView(APIView):
