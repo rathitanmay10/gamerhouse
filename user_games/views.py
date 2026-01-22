@@ -70,7 +70,3 @@ class UserGameNoteViewSet(ModelViewSet):
         context = super().get_serializer_context()
         context["user_game"] = self.get_user_game()
         return context
-
-    def perform_create(self, serializer):
-        user_game = self.get_serializer_context()["user_game"]
-        serializer.save(user_game=user_game, tenant=user_game.tenant)

@@ -8,7 +8,7 @@ from user_games.models import UserGame
 
 class UserGameFilter(FilterSet):
     platform = CharFilter(field_name="platform_id", method="filter_platform_safe")
-    status = CharFilter(choices=Status.choices, method="filter_status_safe")
+    status = CharFilter(method="filter_status_safe")
     min_hours_played = NumberFilter(
         field_name="hours_played", lookup_expr="gte", method="filter_min_hours_played"
     )
