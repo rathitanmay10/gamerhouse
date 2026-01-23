@@ -6,6 +6,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from core.enums import Roles, TenantStatus
+from tenants.models import Tenant
 from users.helper.auth_tokens import blacklist_refresh_token, revoke_access_token
 from users.helper.user_create_helper import update_user_fields
 
@@ -42,6 +43,13 @@ class RegisterSerializer(serializers.ModelSerializer):
         }
 
     def validate(self, attrs):
+        tenant_id = self.context.get("tenant_id")
+        try:
+            Tenant.objects.get(id=tenant_id)
+        except Tenant.DoesNotExist:
+            raise serializers.ValidationError(
+                {"tenant": "Invalid tenant_id. Tenant does not exist."}
+            )
         if attrs["password"] != attrs["confirm_password"]:
             raise serializers.ValidationError({"password": "Passwords do not match"})
         return attrs

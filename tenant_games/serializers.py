@@ -61,6 +61,7 @@ class GameDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Game
         fields = (
+            "id",
             "title",
             "description",
             "release_date",

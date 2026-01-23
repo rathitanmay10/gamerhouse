@@ -4,7 +4,6 @@ from .auth_views import (
     LoginView,
     LogoutAPIView,
     RegisterAPIView,
-    ResendLoginOTPAPIView,
     ResendVerificationAPIView,
     ResetPasswordAPIView,
     TenantTokenRefreshView,
@@ -24,6 +23,5 @@ __all__ = [
     "ResetPasswordAPIView",
     "ForgotPasswordAPIView",
     "LoginVerifyAPIView",
-    "ResendLoginOTPAPIView",
     "TenantTokenRefreshView",
 ]
