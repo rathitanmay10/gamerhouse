@@ -26,6 +26,19 @@ GamerHouse is a **multi-tenant Django REST Framework (DRF)** backend for managin
 * **Advanced filtering** – Filter by status, platform, rating, hours played
 * **Game notes** – Add personal notes to your games
 
+### Logging & Observability
+* **Structured JSON logging** – JSON-formatted logs for easier parsing and analysis
+* **Configurable logging** – File, console, and log level configuration
+* **Request/Response logging** – Track all API requests and responses
+* **Correlation IDs** – Trace requests across distributed systems
+* **Task logging** – Background task execution tracking
+
+### Error Handling
+* **Standardized error responses** – Consistent error format across all endpoints
+* **Detailed error messages** – Clear, actionable error descriptions
+* **Proper HTTP status codes** – Correct status codes for different error types
+* **Middleware-based error handling** – JSON error formatting and logging
+
 ## Architecture Overview
 
 ### Multi-Tenancy
@@ -34,6 +47,8 @@ GamerHouse uses a **shared database, shared schema** multi-tenancy model where:
 - Users belong to a single tenant
 - Admins can only manage users and games within their tenant
 - Super admins can manage platform-wide resources
+- **Automatic tenant context isolation** – Tenant is automatically set during authentication and used for query filtering
+- **Thread-local storage** – Tenant context is safely stored per request for global access
 
 ### Role Hierarchy
 1. **Super Admin** – Platform-level administration, manages catalog (games, genres, platforms)
@@ -127,9 +142,20 @@ Personal game library management with progress tracking.
 ### Error Response
 ```json
 {
-  "error": { ... }
+  "error": "Error message describing what went wrong"
 }
 ```
+
+### Logging
+All API requests and responses are logged with the following information:
+- Request method, path, and parameters
+- Response status and latency
+- Correlation ID for request tracing
+- User and tenant information
+
+Logs are available in both:
+- **Console output** – For development
+- **File output** – Stored in `logs/` directory for production
 
 ## Project Setup
 
@@ -190,6 +216,11 @@ DEFAULT_FROM_EMAIL=noreply@gamerhouse.dev
 
 # Frontend URL (for email links)
 FRONTEND_URL=http://localhost:8000/
+
+# Logging Configuration (Optional)
+LOG_LEVEL=INFO
+LOG_FILE_ENABLED=True
+LOG_CONSOLE_ENABLED=True
 ```
 
 > **Security Note:** `SECRET_KEY` must be changed for any non-local environment.
@@ -327,6 +358,29 @@ The API will be available at `http://localhost:8000/api/v1/`
 ### Create Migrations
 ```bash
 python manage.py makemigrations
+```
+
+### Logging
+Logs are configured in `core/logging.py` and can be customized via environment variables:
+- `LOG_LEVEL` – Set logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+- `LOG_FILE_ENABLED` – Enable/disable file logging
+- `LOG_CONSOLE_ENABLED` – Enable/disable console logging
+
+**Log file location:** `logs/gamerhouse.log`
+
+### Tenant Context
+Tenant context is automatically managed during authentication:
+1. User authenticates with JWT token
+2. `TenantJWTAuthentication` validates token and sets tenant context
+3. Tenant is stored in thread-local storage via `core.context.set_current_tenant()`
+4. Query managers automatically filter by current tenant
+5. Context is cleaned up after request completes
+
+To manually access tenant context in views/tasks:
+```python
+from core.context import get_current_tenant
+
+tenant = get_current_tenant()
 ```
 
 ## Deployment Considerations
