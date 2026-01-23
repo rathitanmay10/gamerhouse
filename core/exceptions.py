@@ -1,4 +1,6 @@
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import IntegrityError
+from django.http import Http404
 from rest_framework import status
 from rest_framework.exceptions import APIException, NotFound, ValidationError
 from rest_framework.response import Response
@@ -41,6 +43,12 @@ def custom_exception_handler(exc, context):
             {"error": "Invalid data or constraint violation."},
             status=status.HTTP_400_BAD_REQUEST,
         )
+    if isinstance(exc, (ObjectDoesNotExist, Http404)):
+        message = str(exc).strip() or "Not Found"
+        return Response(
+            {"error": message},
+            status=status.HTTP_404_NOT_FOUND,
+        )
 
     if isinstance(exc, (TokenError, InvalidToken)):
         return Response(
@@ -60,4 +68,14 @@ def custom_exception_handler(exc, context):
             status=exc.status_code,
         )
 
-    return exception_handler(exc, context)
+    response = exception_handler(exc, context)
+
+    if response is not None:
+        if isinstance(response.data, dict) and "detail" in response.data:
+            response.data = {"error": response.data["detail"]}
+        return response
+
+    return Response(
+        {"error": "Internal server error."},
+        status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+    )

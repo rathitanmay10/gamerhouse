@@ -9,7 +9,6 @@ from users.views import (
     LogoutAPIView,
     MeAPIView,
     RegisterAPIView,
-    ResendLoginOTPAPIView,
     ResendVerificationAPIView,
     ResetPasswordAPIView,
     TenantTokenRefreshView,
@@ -23,11 +22,6 @@ router.register("users", UserViewSet, basename="users")
 urlpatterns = [
     path("auth/login/", LoginView.as_view(), name="login"),
     path("auth/verify-login/", LoginVerifyAPIView.as_view(), name="login_verify"),
-    path(
-        "auth/resend-login-otp/",
-        ResendLoginOTPAPIView.as_view(),
-        name="resend_login_otp",
-    ),
     path("auth/refresh/", TenantTokenRefreshView.as_view(), name="token-refresh"),
     path("auth/logout/", LogoutAPIView.as_view(), name="logout"),
     path(

@@ -240,26 +240,6 @@ class LoginVerifyAPIView(APIView):
         )
 
 
-class ResendLoginOTPAPIView(APIView):
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        email = request.data.get("email")
-        if not email:
-            raise ValidationError({"email": "This field is required."})
-        email = email.lower()
-        if cache.get(login_otp_key(email)):
-            return Response(
-                {"message": "OTP already sent to email, please wait before resending."},
-                status=status.HTTP_200_OK,
-            )
-        send_otp(email)
-        return Response(
-            {"message": "OTP sent to email."},
-            status=status.HTTP_200_OK,
-        )
-
-
 class LogoutAPIView(APIView):
     """
     Log out the authenticated user.

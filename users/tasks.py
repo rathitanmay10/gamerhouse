@@ -4,7 +4,10 @@ from celery import shared_task
 from django.conf import settings
 from django.core.mail import send_mail
 
+from core.context import get_correlation_id
+
 logger = logging.getLogger(__name__)
+correlation_id = get_correlation_id()
 
 
 @shared_task(
@@ -15,7 +18,14 @@ logger = logging.getLogger(__name__)
 )
 def send_verification_email(self, email, token):
     if settings.DEBUG:
-        logger.info("VERIFY EMAIL → email=%s token=%s", email, token)
+        logger.info(
+            "VERIFY EMAIL → email=%s token=%s",
+            email,
+            token,
+            extra={
+                "correlation_id": correlation_id,
+            },
+        )
 
     verify_url = f"{settings.FRONTEND_URL}verify-token/?token={token}"
 
@@ -38,7 +48,14 @@ def send_password_reset_email(self, email, token):
     reset_url = f"{settings.FRONTEND_URL}reset-password/?token={token}"
 
     if settings.DEBUG:
-        logger.info("PASSWORD RESET → email=%s token=%s", email, token)
+        logger.info(
+            "PASSWORD RESET → email=%s token=%s",
+            email,
+            token,
+            extra={
+                "correlation_id": correlation_id,
+            },
+        )
 
     send_mail(
         subject="Reset your password",

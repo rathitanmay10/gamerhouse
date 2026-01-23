@@ -2,6 +2,7 @@ from django.core.cache import cache
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
+from core.context import set_current_tenant
 from core.enums import Roles, TenantStatus
 
 
@@ -12,6 +13,7 @@ class TenantJWTAuthentication(JWTAuthentication):
     - Rejects users without tenants
     - Rejects users whose tenant is inactive
     - Allows SUPER_ADMIN bypass
+    - Sets tenant in thread-local storage for global access
     """
 
     def authenticate(self, request):
@@ -26,7 +28,7 @@ class TenantJWTAuthentication(JWTAuthentication):
         if cache.get(f"blacklist:{jti}"):
             raise AuthenticationFailed("Token has been revoked")
 
-        # SUPER_ADMIN bypass
+        # SUPER_ADMIN bypass - no tenant required
         if user.role == Roles.SUPER_ADMIN:
             return user, validated_token
 
@@ -38,4 +40,11 @@ class TenantJWTAuthentication(JWTAuthentication):
         if user.tenant.status != TenantStatus.ACTIVE:
             raise AuthenticationFailed("Tenant is not active. Please contact support.")
 
+        # Set tenant in thread-local storage for global access
+        self._set_tenant_context(user.tenant)
+
         return user, validated_token
+
+    def _set_tenant_context(self, tenant):
+        """Set tenant in thread-local storage for global access throughout request."""
+        set_current_tenant(tenant)
