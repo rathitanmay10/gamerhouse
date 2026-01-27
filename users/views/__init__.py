@@ -9,6 +9,7 @@ from .auth_views import (
     TenantTokenRefreshView,
     VerifyEmailAPIView,
 )
+from .ui_views import ResetPasswordPageView
 from .user_views import ChangePasswordAPIView, MeAPIView, UserViewSet
 
 __all__ = [
@@ -24,4 +25,5 @@ __all__ = [
     "ForgotPasswordAPIView",
     "LoginVerifyAPIView",
     "TenantTokenRefreshView",
+    "ResetPasswordPageView",
 ]

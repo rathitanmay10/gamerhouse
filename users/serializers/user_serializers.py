@@ -47,11 +47,6 @@ class UserCreateSerializer(serializers.ModelSerializer):
         value = value.lower()
         user = User.all_objects.filter(email=value).first()
         if user and user.is_verified:
-            if not user.is_active:
-                raise serializers.ValidationError(
-                    "This account is disabled. Please contact support.",
-                    code="inactive",
-                )
             raise serializers.ValidationError("Email already exists.", code="unique")
         return value
 
@@ -116,6 +111,7 @@ class UserSerializer(serializers.ModelSerializer):
             "deleted_at",
             "created_at",
             "updated_at",
+            "tenant",
         )
         read_only_fields = (
             "id",
@@ -127,6 +123,7 @@ class UserSerializer(serializers.ModelSerializer):
             "is_verified",
             "created_at",
             "updated_at",
+            "tenant",
         )
 
 

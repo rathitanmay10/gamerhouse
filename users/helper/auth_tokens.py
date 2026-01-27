@@ -46,7 +46,7 @@ def blacklist_all_refresh_tokens_for_user(user):
             user=user,
             expires_at__gt=timezone.now(),
             blacklistedtoken__isnull=True,
-        ).select_for_update()
+        )
 
         BlacklistedToken.objects.bulk_create(
             (BlacklistedToken(token=token) for token in tokens),
