@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Premium Checkout</title>
+</head>
+
+<body>
+    <h2>Premium Subscription</h2>
+    <p>Unlock Lifetime Access to GamerHouse</p>
+
+    <div>
+        <label for="access-token">Access Token:</label><br>
+        <input type="text" id="access-token" placeholder="Enter your access token" style="width: 400px;" />
+    </div>
+    <br>
+
+    <h3>Price: ₹{{ premium_price }}</h3>
+    <button id="rzp-button">Go Premium Now</button>
+    <p id="payment-message"></p>
+
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script>
+        const PREMIUM_PRICE = parseInt("{{ premium_price }}");
+
+        document.getElementById("rzp-button").onclick = async function (e) {
+            e.preventDefault();
+            const button = this;
+            const messageDiv = document.getElementById("payment-message");
+            const accessToken = document.getElementById("access-token").value;
+
+            if (!accessToken) {
+                messageDiv.innerText = "Please enter your access token";
+                return;
+            }
+
+            button.disabled = true;
+            button.innerText = "Processing...";
+
+            try {
+                // Create Order
+                const response = await fetch("/api/v1/payments/create-order/", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": "Bearer " + accessToken
+                    },
+                    body: JSON.stringify({ amount: PREMIUM_PRICE })
+                });
+
+                const jsonResponse = await response.json();
+                const orderData = jsonResponse.data || jsonResponse;
+
+                if (!orderData.key) {
+                    throw new Error("Razorpay Key ID is missing!");
+                }
+
+                // Razorpay Options
+                var options = {
+                    "key": orderData.key,
+                    "amount": orderData.amount,
+                    "currency": "INR",
+                    "name": "GamerHouse",
+                    "description": "Lifetime Premium Subscription",
+                    "order_id": orderData.order_id,
+                    "handler": async function (response) {
+                        button.innerText = "Verifying...";
+
+                        const verifyResponse = await fetch("/api/v1/payments/verify/", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "Authorization": "Bearer " + accessToken
+                            },
+                            body: JSON.stringify({
+                                razorpay_order_id: response.razorpay_order_id,
+                                razorpay_payment_id: response.razorpay_payment_id,
+                                razorpay_signature: response.razorpay_signature
+                            })
+                        });
+
+                        if (verifyResponse.ok) {
+                            button.style.display = "none";
+                            messageDiv.innerText = "Payment Successful! Your premium subscription has been activated.";
+                        } else {
+                            button.disabled = false;
+                            button.innerText = "Go Premium Now";
+                            messageDiv.innerText = "Verification Failed";
+                        }
+                    },
+                    "prefill": {
+                        "name": "{{ request.user.full_name }}",
+                        "email": "{{ request.user.email }}",
+                        "contact": ""
+                    },
+                    "theme": {
+                        "color": "#ffc107"
+                    }
+                };
+
+                var rzp1 = new Razorpay(options);
+                rzp1.on("payment.failed", function (response) {
+                    console.error(response.error);
+                    button.disabled = false;
+                    button.innerText = "Go Premium Now";
+                    messageDiv.innerText = "Payment Failed: " + response.error.description;
+                });
+
+                rzp1.open();
+
+            } catch (error) {
+                console.error(error);
+                button.disabled = false;
+                button.innerText = "Go Premium Now";
+                messageDiv.innerText = "Error: " + error.message;
+            }
+        }
+    </script>
+</body>
+
+</html>
