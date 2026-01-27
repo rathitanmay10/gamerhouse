@@ -61,11 +61,6 @@ class RegisterSerializer(serializers.ModelSerializer):
         user = User.all_objects.filter(username=value).first()
 
         if user:
-            if not user.is_active:
-                raise serializers.ValidationError(
-                    "This account is disabled. Please contact support.",
-                    code="inactive",
-                )
             raise serializers.ValidationError(
                 "Username already exists.",
                 code="unique",
@@ -81,11 +76,6 @@ class RegisterSerializer(serializers.ModelSerializer):
         user = User.all_objects.filter(email=value).first()
 
         if user and user.is_verified:
-            if not user.is_active:
-                raise serializers.ValidationError(
-                    "This account is disabled. Please contact support.",
-                    code="inactive",
-                )
             raise serializers.ValidationError(
                 "Email already exists.",
                 code="unique",
@@ -153,7 +143,7 @@ class LoginSerializer(serializers.Serializer):
                 raise serializers.ValidationError(
                     "User is not associated with any tenant."
                 )
-            if user.tenant.status != TenantStatus.ACTIVE:
+            if user.tenant.status == TenantStatus.INACTIVE:
                 raise serializers.ValidationError(
                     "Tenant is not active. Please contact support."
                 )

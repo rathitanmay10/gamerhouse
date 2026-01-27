@@ -4,12 +4,19 @@ from django.core.exceptions import FieldDoesNotExist
 from django.db import models
 from django.utils import timezone
 
-from core.context import get_current_tenant
+from core.context import current_tenant
 
 
 class ActiveManager(models.Manager):
+    """
+    Custom manager that excludes soft-deleted records.
+
+    Returns only records where deleted_at is NULL.
+    Use all_objects manager to access soft-deleted records.
+    """
+
     def get_queryset(self):
-        tenant = get_current_tenant()
+        tenant = current_tenant.get()
         qs = super().get_queryset().filter(deleted_at__isnull=True)
 
         if tenant:

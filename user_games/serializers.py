@@ -1,7 +1,8 @@
 from django.utils import timezone
 from rest_framework import serializers
 
-from core.enums import Roles, Status
+from core.constants import MAX_FREE_USER_GAMES
+from core.enums import Roles, Status, TenantStatus
 from user_games.models import UserGame, UserGameNote
 
 
@@ -96,7 +97,20 @@ class UserGameSerializer(serializers.ModelSerializer):
                 )
 
         attrs["user"] = user
-        attrs["tenant"] = user.tenant
+        tenant = user.tenant
+        attrs["tenant"] = tenant
+
+        # Check if gamer has reached the maximum limit of 10 active games
+        # Only applies when creating a new game (not updating) and tenant status is ACTIVE
+        if not self.instance and user.role == Roles.GAMER:
+            if tenant.status == TenantStatus.ACTIVE:
+                # Count active user_games (deleted_at__isnull=True, which is objects.all())
+                active_games_count = UserGame.objects.filter(user=user).count()
+                if active_games_count >= MAX_FREE_USER_GAMES:
+                    raise serializers.ValidationError(
+                        f"You have reached the maximum limit of {MAX_FREE_USER_GAMES} active games. "
+                        "Please delete some games before adding new ones."
+                    )
 
         status = attrs.get("status", instance.status if instance else None)
         completed_on = attrs.get(

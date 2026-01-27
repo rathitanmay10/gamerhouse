@@ -1,3 +1,5 @@
 from django.contrib import admin
 
-# Register your models here.
+from tenant_games.models import TenantGame
+
+admin.site.register(TenantGame)

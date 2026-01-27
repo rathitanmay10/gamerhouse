@@ -30,7 +30,7 @@ def get_logging_config():
             # Django default console — DO NOT TOUCH
             "console": {
                 "class": "logging.StreamHandler",
-                "level": "INFO",
+                "level": LOG_LEVEL,
             },
             # Only middleware writes to file
             "middleware_file": {
@@ -38,7 +38,7 @@ def get_logging_config():
                 "filename": str(TODAY_LOG_FILE),
                 "when": "midnight",
                 "interval": 1,
-                "backupCount": 30,
+                "backupCount": 5,
                 "formatter": "json",
                 "encoding": "utf-8",
                 "level": LOG_LEVEL,
@@ -49,18 +49,23 @@ def get_logging_config():
             "django": {
                 "handlers": ["console"],
                 "level": "INFO",
-                "propagate": True,
+                "propagate": False,
             },
-            # Django request (404, warnings) → default behavior
+            # Django request (404, error) → default behavior
             "django.request": {
                 "handlers": ["console"],
-                "level": "WARNING",
-                "propagate": True,
+                "level": "DEBUG",
+                "propagate": False,
+            },
+            "django.views": {
+                "handlers": ["console"],
+                "level": "DEBUG",
+                "propagate": False,
             },
             "django.server": {
                 "handlers": ["console"],
-                "level": "INFO",
-                "propagate": True,
+                "level": "DEBUG",
+                "propagate": False,
             },
             # Your middleware → file only
             "request_logger": {

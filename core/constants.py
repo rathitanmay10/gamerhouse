@@ -15,3 +15,5 @@ LOGIN_OTP_TTL = 60 * 10
 
 # OTP security limits
 MAX_OTP_ATTEMPTS = 5
+
+MAX_FREE_USER_GAMES = 5

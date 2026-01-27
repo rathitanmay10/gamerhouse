@@ -14,6 +14,7 @@ dependencies = [
     "dotenv>=0.9.9",
     "psycopg2-binary>=2.9.11",
     "python-json-logger>=4.0.0",
+    "razorpay>=2.0.0",
 ]
 
 [dependency-groups]

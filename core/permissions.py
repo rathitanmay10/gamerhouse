@@ -12,6 +12,26 @@ class IsSuperAdminRoleOrAdminRole(BasePermission):
         return request.user.role in [Roles.SUPER_ADMIN, Roles.ADMIN]
 
 
+class IsSuperAdminRole(BasePermission):
+    """
+    Allows access only to users with the SUPER ADMIN role.
+    Used for tenant-specific operations like payments.
+    """
+
+    def has_permission(self, request, view):
+        return request.user.role == Roles.SUPER_ADMIN
+
+
+class IsAdminRole(BasePermission):
+    """
+    Allows access only to users with the ADMIN role (not super admins).
+    Used for tenant-specific operations like payments.
+    """
+
+    def has_permission(self, request, view):
+        return request.user.role == Roles.ADMIN
+
+
 class IsSuperAdminOrAdminReadOnly(BasePermission):
     """
     Allows read-only access to all admins.

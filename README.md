@@ -9,7 +9,9 @@ GamerHouse is a **multi-tenant Django REST Framework (DRF)** backend for managin
 * **UUID primary keys** – All models use UUIDs for security and scalability
 * **Soft delete** support with active/all object managers
 * **Background tasks** – Celery with Redis for async processing
-* **Caching** – Redis-backed Django cache
+* **Caching** – Redis-backed Django cache with decorator-based response caching
+* **Response filtering** – Search and filter support for catalog endpoints
+* **Rate limiting** – Authentication endpoints protected with rate limiting (5/minute)
 
 ### Authentication & Authorization
 * **Email-based authentication** – Login with email instead of username
@@ -23,14 +25,23 @@ GamerHouse is a **multi-tenant Django REST Framework (DRF)** backend for managin
 * **Tenant-scoped games** – Games are managed per tenant
 * **Personal game library** – Track your gaming progress
 * **Status tracking** – Wishlist, Playing, Completed, Dropped
-* **Advanced filtering** – Filter by status, platform, rating, hours played
+* **Advanced filtering** – Filter by status, platform, rating, hours played, genre
 * **Game notes** – Add personal notes to your games
+* **Free tier limits** – Max 5 games for free users
+
+### Payments & Subscriptions
+* **Razorpay integration** – Secure payment gateway integration
+* **Premium subscriptions** – Unlock unlimited game library entries
+* **Subscription management** – Track subscription status and billing
+* **Payment verification** – Secure signature verification for payments
+* **Webhook handling** – Automatic payment status updates via webhooks
+* **Payment polling** – Automatic reconciliation of pending payments
 
 ### Logging & Observability
 * **Structured JSON logging** – JSON-formatted logs for easier parsing and analysis
 * **Configurable logging** – File, console, and log level configuration
 * **Request/Response logging** – Track all API requests and responses
-* **Correlation IDs** – Trace requests across distributed systems
+* **Correlation IDs** – Trace requests across distributed systems using context variables
 * **Task logging** – Background task execution tracking
 
 ### Error Handling
@@ -48,12 +59,12 @@ GamerHouse uses a **shared database, shared schema** multi-tenancy model where:
 - Admins can only manage users and games within their tenant
 - Super admins can manage platform-wide resources
 - **Automatic tenant context isolation** – Tenant is automatically set during authentication and used for query filtering
-- **Thread-local storage** – Tenant context is safely stored per request for global access
+- **Context variables** – Tenant context is safely stored per request using Python's `contextvars` for async compatibility
 
 ### Role Hierarchy
-1. **Super Admin** – Platform-level administration, manages catalog (games, genres, platforms)
-2. **Admin** – Tenant-level administration, manages users and games within their tenant
-3. **Gamer** – Regular user, manages their own game library
+1. **Super Admin** – Platform-level administration, manages catalog (games, genres, platforms), payments, and subscriptions
+2. **Admin** – Tenant-level administration, manages users and games within their tenant, handles premium subscriptions
+3. **Gamer** – Regular user, manages their own game library (limited to 5 games on free tier)
 
 ## Modules
 
@@ -68,12 +79,18 @@ Manages organizations and tenant isolation.
 * Admin: Read-only access to own tenant
 
 ### Catalog Module
-Platform-wide reference data for games, genres, and platforms.
+Platform-wide reference data for games, genres, and platforms with response caching.
 
 **Entities:**
 * **Genre** – Game categories (e.g., RPG, Action, Strategy)
 * **Platform** – Gaming platforms (e.g., PC, PlayStation, Xbox)
 * **Game** – Master game catalog
+
+**Features:**
+* Search by title (Games)
+* Filter by genre and platform (Games)
+* Search by name (Genres and Platforms)
+* Response caching with automatic invalidation on mutations
 
 **API Access:**
 * Super Admin: Full CRUD access
@@ -103,10 +120,32 @@ Personal game library management with progress tracking.
 * Personal rating system
 * Start and completion date tracking
 * Platform-specific game entries
+* Free tier limit: 5 games max
+* Premium tier: Unlimited games
 
 **API Access:**
 * Admin: Full CRUD access for all users in their tenant
 * Gamer: Full CRUD access for their own games only
+
+### Payments Module
+Handles payment processing and subscription management using Razorpay.
+
+**Entities:**
+* **Payment** – Records payment transactions with Razorpay integration
+* **Subscription** – Tracks tenant premium subscription status
+* **WebhookEvent** – Stores and processes payment webhooks
+
+**Features:**
+* Create payment orders via Razorpay
+* Verify payment signatures for security
+* Track payment lifecycle (created → paid → verified → activated)
+* Automatic webhook processing for payment status updates
+* Polling reconciliation for pending payments (every 15 minutes)
+* Subscription status management (pending, active, expired)
+
+**API Access:**
+* Admin: Create and manage subscriptions for their tenant
+* Super Admin: View all payments and subscriptions
 
 ## Tech Stack
 
@@ -119,6 +158,7 @@ Personal game library management with progress tracking.
 * **SimpleJWT** – JWT authentication
 * **django-filter** – Advanced filtering
 * **django-celery-beat** – Periodic task scheduling
+* **Razorpay SDK** – Payment gateway integration
 
 ## API Conventions
 
@@ -146,6 +186,16 @@ Personal game library management with progress tracking.
 }
 ```
 
+### Response Caching
+Catalog endpoints (Genres, Platforms, Games) implement automatic response caching:
+- GET requests are cached for 2 minutes
+- Cache is automatically invalidated on POST, PATCH, DELETE operations
+- Cache keys include full query parameters for accurate filtering
+
+### Rate Limiting
+Authentication endpoints are protected with rate limiting:
+- Auth endpoints: 5 requests per minute per IP
+
 ### Logging
 All API requests and responses are logged with the following information:
 - Request method, path, and parameters
@@ -164,6 +214,7 @@ Logs are available in both:
 * PostgreSQL 12 or higher
 * Redis 6 or higher
 * SMTP server (for email verification)
+* Razorpay account (for payment processing)
 
 ### 1. Clone the repository
 ```bash
@@ -217,13 +268,18 @@ DEFAULT_FROM_EMAIL=noreply@gamerhouse.dev
 # Frontend URL (for email links)
 FRONTEND_URL=http://localhost:8000/
 
+# Razorpay Payment Gateway (Sandbox)
+RAZORPAY_KEY_ID=rzp_test_your_key_id_here
+RAZORPAY_KEY_SECRET=your_key_secret_here
+RAZORPAY_WEBHOOK_SECRET=your_webhook_secret_here
+
 # Logging Configuration (Optional)
 LOG_LEVEL=INFO
 LOG_FILE_ENABLED=True
 LOG_CONSOLE_ENABLED=True
 ```
 
-> **Security Note:** `SECRET_KEY` must be changed for any non-local environment.
+> **Security Note:** `SECRET_KEY` must be changed for any non-local environment. Use real Razorpay keys in production.
 
 ### 5. Database Setup
 Ensure PostgreSQL is running and create the database:
@@ -302,12 +358,17 @@ The API will be available at `http://localhost:8000/api/v1/`
 * `DELETE /api/v1/users/<id>/` – Soft delete user
 
 ### Catalog (Super Admin only for write)
-* `GET /api/v1/genres/` – List genres
+* `GET /api/v1/genres/` – List genres (with search)
 * `POST /api/v1/genres/` – Create genre
-* `GET /api/v1/platforms/` – List platforms
+* `GET /api/v1/platforms/` – List platforms (with search)
 * `POST /api/v1/platforms/` – Create platform
-* `GET /api/v1/games/` – List games
+* `GET /api/v1/games/` – List games (with search, genre/platform filters)
 * `POST /api/v1/games/` – Create game
+
+**Catalog Query Parameters:**
+* `search` – Search by name (Genres, Platforms) or title (Games)
+* `genre` – Filter games by genre UUIDs (comma-separated)
+* `platforms` – Filter games by platform UUIDs (comma-separated)
 
 ### Tenant Games
 * `GET /api/v1/tenant-games/` – List tenant games
@@ -353,12 +414,41 @@ The API will be available at `http://localhost:8000/api/v1/`
 * `PATCH /api/v1/user-games/<game_id>/notes/<id>/` – Update note
 * `DELETE /api/v1/user-games/<game_id>/notes/<id>/` – Delete note
 
+### Payments
+* `POST /api/v1/payments/create-order/` – Create Razorpay payment order (Admin only)
+* `POST /api/v1/payments/verify/` – Verify payment signature (Admin only)
+* `GET /api/v1/payments/checkout/` – Premium checkout page (Admin only)
+* `POST /api/v1/payments/webhook/` – Razorpay webhook endpoint (no auth required)
+
+### Admin Payments Monitoring
+* `GET /api/v1/admin/payments/` – List all payments (Super Admin only)
+* `GET /api/v1/admin/payments/<id>/` – Get payment details (Super Admin only)
+* `GET /api/v1/admin/subscriptions/` – List all subscriptions (Super Admin only)
+* `GET /api/v1/admin/subscriptions/<id>/` – Get subscription details (Super Admin only)
+* `GET /api/v1/admin/webhooks/` – List webhook events (Super Admin only)
+* `GET /api/v1/admin/webhooks/<id>/` – Get webhook event details (Super Admin only)
+
 ## Development
 
 ### Create Migrations
 ```bash
 python manage.py makemigrations
 ```
+
+### Response Caching
+The system uses decorator-based caching for catalog endpoints:
+
+```python
+@drf_cache_response(prefix="genres:list", ttl=120)
+def list(self, request, *args, **kwargs):
+    return super().list(request, *args, **kwargs)
+
+@drf_invalidate_cache(pattern="cache:genres*")
+def perform_create(self, serializer):
+    return super().perform_create(serializer)
+```
+
+Cache keys include query parameters for accurate filtering. TTL is 120 seconds by default.
 
 ### Logging
 Logs are configured in `core/logging.py` and can be customized via environment variables:
@@ -369,18 +459,31 @@ Logs are configured in `core/logging.py` and can be customized via environment v
 **Log file location:** `logs/gamerhouse.log`
 
 ### Tenant Context
-Tenant context is automatically managed during authentication:
+Tenant context is automatically managed during authentication using Python's context variables:
 1. User authenticates with JWT token
 2. `TenantJWTAuthentication` validates token and sets tenant context
-3. Tenant is stored in thread-local storage via `core.context.set_current_tenant()`
+3. Tenant is stored in a `ContextVar` for async-safe access
 4. Query managers automatically filter by current tenant
-5. Context is cleaned up after request completes
+5. Context is automatically cleaned up after request completes
 
 To manually access tenant context in views/tasks:
 ```python
-from core.context import get_current_tenant
+from core.context import current_tenant
 
-tenant = get_current_tenant()
+tenant = current_tenant.get()
+```
+
+### Correlation IDs
+Correlation IDs are automatically generated for request tracing:
+
+```python
+from core.context import get_correlation_id, set_correlation_id
+
+# Set at request start (middleware handles this automatically)
+set_correlation_id(str(uuid.uuid4()))
+
+# Access in views/services
+correlation_id = get_correlation_id()
 ```
 
 ## Deployment Considerations
@@ -393,6 +496,7 @@ Ensure all production environment variables are set, especially:
 * Database credentials
 * Redis connection strings
 * SMTP credentials
+* Razorpay credentials
 
 ### Database Migrations
 Always run migrations before deploying:
@@ -400,6 +504,9 @@ Always run migrations before deploying:
 python manage.py migrate
 ```
 
+### Celery Beat Scheduled Tasks
+The following tasks run automatically:
+- **polling-reconcile-task** – Runs every 15 minutes to reconcile pending payments with Razorpay
 
 ## Status
 
@@ -410,10 +517,17 @@ python manage.py migrate
 * Password reset functionality
 * JWT authentication with token blacklisting
 * Catalog management (Games, Genres, Platforms)
+* Response caching for catalog endpoints
+* Search and filtering for catalog
 * Tenant game management
 * Personal game library with progress tracking
+* Free tier game limits (5 games)
 * Advanced filtering and pagination
 * Celery background task processing
 * Redis caching
-
-
+* Razorpay payment gateway integration
+* Premium subscriptions and billing
+* Webhook handling for payment status updates
+* Automatic payment reconciliation
+* Structured JSON logging with correlation IDs
+* Context-based tenant isolation (async-safe)

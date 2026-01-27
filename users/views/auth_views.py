@@ -5,6 +5,7 @@ from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import InvalidToken
 from rest_framework_simplejwt.views import TokenRefreshView
@@ -70,6 +71,8 @@ class RegisterAPIView(APIView):
     and sends an email verification link.
     """
 
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
     permission_classes = [AllowAny]
 
     @transaction.atomic
@@ -100,6 +103,8 @@ class RegisterAPIView(APIView):
 
 
 class VerifyEmailAPIView(APIView):
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
     permission_classes = [AllowAny]
 
     @transaction.atomic
@@ -131,6 +136,8 @@ class VerifyEmailAPIView(APIView):
 
 
 class ResendVerificationAPIView(APIView):
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -171,6 +178,8 @@ class LoginView(APIView):
     Authenticate a user and issue JWT tokens.
     """
 
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -190,6 +199,8 @@ class LoginView(APIView):
 
 
 class LoginVerifyAPIView(APIView):
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
     permission_classes = [AllowAny]
 
     @transaction.atomic
@@ -247,6 +258,8 @@ class LogoutAPIView(APIView):
     Invalidates the provided refresh token.
     """
 
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -261,6 +274,9 @@ class TenantTokenRefreshView(TokenRefreshView):
     """
     Overrides token refresh to enforce tenant status.
     """
+
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
 
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
@@ -279,13 +295,15 @@ class TenantTokenRefreshView(TokenRefreshView):
             if user.role != Roles.SUPER_ADMIN:
                 if not user.tenant:
                     raise InvalidToken("User is not associated with any tenant.")
-                if user.tenant.status != TenantStatus.ACTIVE:
+                if user.tenant.status == TenantStatus.INACTIVE:
                     raise InvalidToken("Tenant is not active. Please contact support.")
 
         return response
 
 
 class ForgotPasswordAPIView(APIView):
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -318,6 +336,8 @@ class ForgotPasswordAPIView(APIView):
 
 
 class ResetPasswordAPIView(APIView):
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
     permission_classes = [AllowAny]
 
     def post(self, request):
