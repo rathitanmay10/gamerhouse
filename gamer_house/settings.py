@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     "user_games",
     "tenants",
     "tenant_games",
+    "payments",
 ]
 
 MIDDLEWARE = [
@@ -107,6 +108,12 @@ REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": [
         "core.renderers.StandardJSONRenderer",
     ],
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.ScopedRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "auth": "5/minute",
+    },
 }
 
 SIMPLE_JWT = {
@@ -160,3 +167,8 @@ EMAIL_USE_SSL = False
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
 
 LOGGING = get_logging_config()
+
+
+RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID")
+RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET")
+RAZORPAY_WEBHOOK_SECRET = os.getenv("RAZORPAY_WEBHOOK_SECRET")
