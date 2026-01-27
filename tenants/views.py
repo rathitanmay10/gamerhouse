@@ -4,7 +4,7 @@ from rest_framework.viewsets import ModelViewSet
 from core.enums import Roles, TenantStatus
 from tenants.models import Tenant
 from tenants.permissions import IsSuperAdminOrTenantAdminGetOwnTenant
-from tenants.serializers import TenantSerializer
+from tenants.serializers import TenantDetailSerializer, TenantSerializer
 
 
 class TenantViewSet(ModelViewSet):
@@ -21,6 +21,11 @@ class TenantViewSet(ModelViewSet):
             return Tenant.objects.filter(id=user.tenant_id)
 
         return Tenant.objects.none()
+
+    def get_serializer_class(self):
+        if self.action == "retrieve":
+            return TenantDetailSerializer
+        return TenantSerializer
 
     @transaction.atomic
     def perform_destroy(self, instance):

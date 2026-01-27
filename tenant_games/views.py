@@ -30,6 +30,9 @@ class TenantGameViewSet(ModelViewSet):
         qs = TenantGame.objects.select_related(
             "tenant", "game", "game__genre"
         ).prefetch_related("game__platforms")
+
+        # qs = TenantGame.objects.all()
+
         if user.role == Roles.SUPER_ADMIN:
             return qs
 
