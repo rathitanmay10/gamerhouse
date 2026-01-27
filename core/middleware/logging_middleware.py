@@ -26,27 +26,10 @@ class RequestResponseLoggingMiddleware(MiddlewareMixin):
     - Correlation ID generation and propagation (trace requests across services)
     - Tenant ID & User ID context (audit trail and multi-tenant data isolation)
     - Execution time in milliseconds (performance monitoring)
-    - Sensitive data masking (passwords, tokens, API keys)
     - Request/response lifecycle logging with proper log levels (INFO/WARNING/ERROR)
     - Error logging with stack traces (debugging production issues)
     - Async-safe logging (works with Celery & async views via thread-local storage)
     """
-
-    # Sensitive field patterns to mask
-    SENSITIVE_FIELDS = {
-        "password",
-        "passwd",
-        "pwd",
-        "secret",
-        "token",
-        "api_key",
-        "apikey",
-        "auth",
-        "authorization",
-        "refresh",
-        "access_token",
-        "refresh_token",
-    }
 
     def process_request(self, request):
         """
@@ -62,7 +45,8 @@ class RequestResponseLoggingMiddleware(MiddlewareMixin):
         request._start_time = time.time()
 
         # Extract user and tenant context early for logging
-        tenant_id, tenant_name, user_id = self._extract_user_context(request)
+        tenant_id = request.user.tenant_id if request.user.is_authenticated else None
+        user_id = request.user.id if request.user.is_authenticated else None
 
         # Extract request details for structured logging
         log_data = {
@@ -76,8 +60,6 @@ class RequestResponseLoggingMiddleware(MiddlewareMixin):
             "user_agent": request.META.get("HTTP_USER_AGENT", ""),
             # Tenant context: identifies which tenant (if multi-tenant) for data isolation
             "tenant_id": tenant_id,
-            "tenant_name": tenant_name,
-            # User context: identifies authenticated user for access control and audit trails
             "user_id": user_id,
         }
 
@@ -99,7 +81,8 @@ class RequestResponseLoggingMiddleware(MiddlewareMixin):
         correlation_id = getattr(request, "correlation_id", str(uuid.uuid4()))
 
         # Extract user and tenant context for audit logging
-        tenant_id, tenant_name, user_id = self._extract_user_context(request)
+        tenant_id = request.user.tenant_id if request.user.is_authenticated else None
+        user_id = request.user.id if request.user.is_authenticated else None
 
         # Prepare log data with complete response information
         log_data = {
@@ -114,7 +97,6 @@ class RequestResponseLoggingMiddleware(MiddlewareMixin):
             "execution_time_ms": round(execution_time, 2),
             # Audit: tenant and user IDs enable tracing actions to specific tenant/user
             "tenant_id": tenant_id,
-            "tenant_name": tenant_name,
             "user_id": user_id,
         }
 
@@ -148,7 +130,8 @@ class RequestResponseLoggingMiddleware(MiddlewareMixin):
         correlation_id = getattr(request, "correlation_id", str(uuid.uuid4()))
 
         # Extract user and tenant context for audit trail of who encountered the error
-        tenant_id, tenant_name, user_id = self._extract_user_context(request)
+        tenant_id = request.user.tenant_id if request.user.is_authenticated else None
+        user_id = request.user.id if request.user.is_authenticated else None
 
         # Prepare comprehensive error log data for debugging and monitoring
         log_data = {
@@ -161,7 +144,6 @@ class RequestResponseLoggingMiddleware(MiddlewareMixin):
             "execution_time_ms": round(execution_time, 2),
             # Audit: who (user/tenant) experienced the error
             "tenant_id": tenant_id,
-            "tenant_name": tenant_name,
             "user_id": user_id,
             # Error details: exception type and message for error classification and alerting
             "error_type": exception.__class__.__name__,
@@ -189,69 +171,6 @@ class RequestResponseLoggingMiddleware(MiddlewareMixin):
         else:
             ip = request.META.get("REMOTE_ADDR", "")
         return ip
-
-    def _extract_user_context(self, request):
-        """
-        Extract user and tenant information from the request for audit logging.
-
-        Returns:
-            tuple: (tenant_id, tenant_name, user_id)
-
-        Why we log these:
-        - tenant_id: Multi-tenant data isolation; enables per-tenant analytics and billing
-        - tenant_name: Human-readable identification for log correlation
-        - user_id: Audit trail for compliance, identifies which user performed an action
-        """
-        tenant_id = None
-        tenant_name = None
-        user_id = None
-
-        # Only extract user info if they're authenticated (security: don't log unauthenticated sessions)
-        if hasattr(request, "user") and request.user.is_authenticated:
-            user_id = str(request.user.id)
-
-            # Extract tenant information if multi-tenant setup is enabled
-            if hasattr(request.user, "tenant") and request.user.tenant:
-                tenant_id = str(request.user.tenant.id)
-                tenant_name = request.user.tenant.name
-
-        return tenant_id, tenant_name, user_id
-
-    def _mask_sensitive_data(self, data):
-        """
-        Recursively mask sensitive data in dictionaries and lists to prevent logging secrets.
-
-        This is critical for preventing credential leakage in logs while maintaining observability.
-        Any request/response data containing passwords, tokens, or API keys will be masked.
-
-        Args:
-            data: Dictionary, list, or primitive value
-
-        Returns:
-            Same structure with sensitive values masked as "***MASKED***"
-
-        Example:
-            {"username": "john", "password": "secret123"}
-            becomes:
-            {"username": "john", "password": "***MASKED***"}
-        """
-        if isinstance(data, dict):
-            masked = {}
-            for key, value in data.items():
-                # Check if key name matches any sensitive field pattern
-                # This prevents logging passwords, tokens, API keys, auth headers, etc.
-                if any(sensitive in key.lower() for sensitive in self.SENSITIVE_FIELDS):
-                    masked[key] = "***MASKED***"
-                else:
-                    # Recursively process nested structures
-                    masked[key] = self._mask_sensitive_data(value)
-            return masked
-        elif isinstance(data, list):
-            # Process each item in lists (e.g., multiple credentials, list of tokens)
-            return [self._mask_sensitive_data(item) for item in data]
-        else:
-            # Primitive values pass through unchanged
-            return data
 
 
 def get_correlation_id():
