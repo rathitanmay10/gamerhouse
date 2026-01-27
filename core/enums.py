@@ -31,6 +31,7 @@ class Status(TextChoices):
 class TenantStatus(TextChoices):
     ACTIVE = "active", "Active"
     INACTIVE = "inactive", "Inactive"
+    PREMIUM = "premium", "Premium"
 
 
 class UserStatus(StrEnum):
