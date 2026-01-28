@@ -7,9 +7,6 @@ class PaymentSerializer(serializers.ModelSerializer):
     """Serializer for Payment model with tenant and admin details."""
 
     tenant_name = serializers.CharField(source="tenant.name", read_only=True)
-    tenant_status = serializers.CharField(source="tenant.status", read_only=True)
-    admin_email = serializers.EmailField(source="admin.email", read_only=True)
-    admin_name = serializers.CharField(source="admin.name", read_only=True)
     amount_inr = serializers.SerializerMethodField()
 
     class Meta:
@@ -18,13 +15,9 @@ class PaymentSerializer(serializers.ModelSerializer):
             "id",
             "tenant",
             "tenant_name",
-            "tenant_status",
             "admin",
-            "admin_email",
-            "admin_name",
             "razorpay_order_id",
             "razorpay_payment_id",
-            "razorpay_signature",
             "amount",
             "amount_inr",
             "status",
