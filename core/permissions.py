@@ -9,7 +9,10 @@ class IsSuperAdminRoleOrAdminRole(BasePermission):
     """
 
     def has_permission(self, request, view):
-        return request.user.role in [Roles.SUPER_ADMIN, Roles.ADMIN]
+        return request.user.is_authenticated and request.user.role in [
+            Roles.SUPER_ADMIN,
+            Roles.ADMIN,
+        ]
 
 
 class IsSuperAdminRole(BasePermission):
@@ -19,7 +22,7 @@ class IsSuperAdminRole(BasePermission):
     """
 
     def has_permission(self, request, view):
-        return request.user.role == Roles.SUPER_ADMIN
+        return request.user.is_authenticated and request.user.role == Roles.SUPER_ADMIN
 
 
 class IsAdminRole(BasePermission):
@@ -29,7 +32,7 @@ class IsAdminRole(BasePermission):
     """
 
     def has_permission(self, request, view):
-        return request.user.role == Roles.ADMIN
+        return request.user.is_authenticated and request.user.role == Roles.ADMIN
 
 
 class IsSuperAdminOrAdminReadOnly(BasePermission):
@@ -39,10 +42,15 @@ class IsSuperAdminOrAdminReadOnly(BasePermission):
     """
 
     def has_permission(self, request, view):
-        if request.method in SAFE_METHODS and request.user.role in [
-            Roles.SUPER_ADMIN,
-            Roles.ADMIN,
-        ]:
+        if (
+            request.user.is_authenticated
+            and request.method in SAFE_METHODS
+            and request.user.role
+            in [
+                Roles.SUPER_ADMIN,
+                Roles.ADMIN,
+            ]
+        ):
             return True
 
         return request.user.is_authenticated and request.user.role == Roles.SUPER_ADMIN
@@ -55,7 +63,7 @@ class IsSuperAdminOrReadOnly(BasePermission):
     """
 
     def has_permission(self, request, view):
-        if request.method in SAFE_METHODS:
+        if request.user.is_authenticated and request.method in SAFE_METHODS:
             return True
 
         return request.user.is_authenticated and request.user.role == Roles.SUPER_ADMIN
