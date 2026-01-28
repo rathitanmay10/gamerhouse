@@ -11,7 +11,7 @@ class IsTenantAdminOrGamer(BasePermission):
 
     def has_permission(self, request, view):
         user = request.user
-        return user.role in [Roles.ADMIN, Roles.GAMER]
+        return user.is_authenticated and user.role in [Roles.ADMIN, Roles.GAMER]
 
     def has_object_permission(self, request, view, obj):
         user = request.user
@@ -33,7 +33,7 @@ class UserGameNotePermission(BasePermission):
 
     def has_permission(self, request, view):
         user = request.user
-        return user.role in [Roles.ADMIN, Roles.GAMER]
+        return user.is_authenticated and user.role in [Roles.ADMIN, Roles.GAMER]
 
     def has_object_permission(self, request, view, obj):
         user = request.user
