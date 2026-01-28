@@ -12,6 +12,9 @@ class TenantGamePermission(BasePermission):
     """
 
     def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+
         role = request.user.role
 
         if role in [Roles.SUPER_ADMIN, Roles.ADMIN]:
