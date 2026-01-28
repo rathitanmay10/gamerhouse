@@ -1,5 +1,4 @@
 import os
-from datetime import datetime
 from pathlib import Path
 
 from django.conf import settings
@@ -13,7 +12,6 @@ def get_logging_config():
     LOGS_DIR = BASE_DIR / "logs"
     LOGS_DIR.mkdir(exist_ok=True)
 
-    TODAY_LOG_FILE = LOGS_DIR / f"{datetime.now().strftime('%Y-%m-%d')}.log"
 
     return {
         "version": 1,
@@ -31,11 +29,10 @@ def get_logging_config():
                 "level": LOG_LEVEL,
             },
             "middleware_file": {
-                "class": "logging.handlers.TimedRotatingFileHandler",
-                "filename": str(TODAY_LOG_FILE),
-                "when": "midnight",
-                "interval": 1,
-                "backupCount": 5,
+                "class": "logging.handlers.RotatingFileHandler",
+                "filename": str(LOGS_DIR / "server.log"),
+                "maxBytes": 1024 * 200,  # 200 KB
+                "backupCount": 1,
                 "formatter": "json",
                 "encoding": "utf-8",
                 "level": "NOTSET",
