@@ -2,6 +2,9 @@ from django.db.models import TextChoices
 
 
 class PaymentStatus(TextChoices):
+    """
+    Payment status choices
+    """
     CREATED = "created", "Created"
     AUTHORIZED = "authorized", "Authorized"
     PAID = "paid", "Paid"
@@ -13,6 +16,9 @@ class PaymentStatus(TextChoices):
 
 
 class SubscriptionStatus(TextChoices):
+    """
+    Subscription status choices
+    """
     NONE = "none", "No Subscription"
     PENDING = "pending", "Pending"
     ACTIVE = "active", "Active"
@@ -20,6 +26,9 @@ class SubscriptionStatus(TextChoices):
 
 
 class WebhookEventStatus(TextChoices):
+    """
+    Webhook event status choices
+    """
     PENDING = "pending", "Pending"
     PROCESSING = "processing", "Processing"
     PROCESSED = "processed", "Processed"

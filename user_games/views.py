@@ -5,7 +5,7 @@ from rest_framework.viewsets import ModelViewSet
 from core.enums import Roles
 from user_games.filters import UserGameFilter
 from user_games.models import UserGame, UserGameNote
-from user_games.permissions import IsTenantAdminOrGamer
+from user_games.permissions import IsTenantAdminOrGamer, UserGameNotePermission
 from user_games.serializers import UserGameNoteSerializer, UserGameSerializer
 
 
@@ -41,7 +41,7 @@ class UserGameViewSet(ModelViewSet):
 
 
 class UserGameNoteViewSet(ModelViewSet):
-    permission_classes = [IsTenantAdminOrGamer]
+    permission_classes = [UserGameNotePermission]
     serializer_class = UserGameNoteSerializer
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
 

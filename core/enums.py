@@ -29,6 +29,9 @@ class Status(TextChoices):
 
 
 class TenantStatus(TextChoices):
+    """
+    Tenant status values used to track a tenant's status.
+    """
     ACTIVE = "active", "Active"
     INACTIVE = "inactive", "Inactive"
     PREMIUM = "premium", "Premium"

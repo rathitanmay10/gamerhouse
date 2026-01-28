@@ -281,7 +281,7 @@ class TenantTokenRefreshView(TokenRefreshView):
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
 
-        if response.status_code == 200:
+        if response.status_code == status.HTTP_200_OK:
             from rest_framework_simplejwt.tokens import AccessToken
 
             access_token_str = response.data.get("access")

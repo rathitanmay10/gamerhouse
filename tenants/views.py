@@ -8,6 +8,11 @@ from tenants.serializers import TenantDetailSerializer, TenantSerializer
 
 
 class TenantViewSet(ModelViewSet):
+    """
+    Tenant ViewSet which handles CRUD operations for tenants.
+    Admin can only read their own tenant.
+    Super Admin can CRUD any tenant.
+    """
     permission_classes = [IsSuperAdminOrTenantAdminGetOwnTenant]
     serializer_class = TenantSerializer
 

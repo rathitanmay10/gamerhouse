@@ -6,14 +6,10 @@ class JsonErrorMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        response = self.get_response(request)
-
-        # Convert Django HTML errors to JSON only for non-DRF errors
-        if response.status_code >= 400 and response.get("content-type", "").startswith(
-            "text/html"
-        ):
+        try:
+            return self.get_response(request)
+        except Exception as exc:
             return JsonResponse(
-                {"error": response.reason_phrase}, status=response.status_code
+                {"error": "Internal server error.", "details": str(exc)},
+                status=500,
             )
-
-        return response

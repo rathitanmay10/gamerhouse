@@ -42,7 +42,7 @@ class Command(BaseCommand):
 
     def _seed_users(self):
         user, created = User.all_objects.get_or_create(
-            email="super_admin@mailinator.com",
+            email="super_admin@yopmail.com",
             defaults={
                 "username": "super_admin",
                 "role": Roles.SUPER_ADMIN,

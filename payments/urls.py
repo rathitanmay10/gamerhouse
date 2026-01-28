@@ -11,7 +11,6 @@ from payments.views import (
 )
 from payments.views.views_ui import PremiumCheckoutPage
 
-# Router for super admin monitoring views
 router = DefaultRouter()
 router.register(r"admin/payments", PaymentViewSet, basename="admin-payment")
 router.register(
@@ -20,7 +19,6 @@ router.register(
 router.register(r"admin/webhooks", WebhookEventViewSet, basename="admin-webhook")
 
 urlpatterns = [
-    # Tenant admin endpoints
     path(
         "payments/create-order/",
         CreateOrderAPIView.as_view(),
@@ -31,6 +29,5 @@ urlpatterns = [
         "payments/webhook/", RazorpayWebhookAPIView.as_view(), name="payments-webhook"
     ),
     path("payments/checkout/", PremiumCheckoutPage.as_view(), name="premium-checkout"),
-    # Super admin monitoring endpoints
     path("", include(router.urls)),
 ]

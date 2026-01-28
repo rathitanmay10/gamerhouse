@@ -31,15 +31,12 @@ class CreateOrderAPIView(APIView):
 
     def post(self, request):
         tenant = request.user.tenant
-
-        # Validate request data
         serializer = CreateOrderSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         amount = serializer.validated_data["amount"]
 
         try:
-            # Use service layer to create order
             order_data = PaymentService.create_order(
                 tenant=tenant, admin=request.user, amount=amount
             )
@@ -77,7 +74,6 @@ class VerifyPaymentAPIView(APIView):
     def post(self, request):
         tenant = request.user.tenant
 
-        # Validate request data
         serializer = VerifyPaymentSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -86,15 +82,12 @@ class VerifyPaymentAPIView(APIView):
         razorpay_signature = serializer.validated_data["razorpay_signature"]
 
         try:
-            # Verify payment using service layer
             payment = PaymentService.verify_payment(
                 razorpay_order_id=razorpay_order_id,
                 razorpay_payment_id=razorpay_payment_id,
                 razorpay_signature=razorpay_signature,
                 tenant=tenant,
             )
-
-            # Trigger async activation task
             activate_premium_task.delay(str(payment.id))
 
             logger.info(

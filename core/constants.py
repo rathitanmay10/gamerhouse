@@ -17,3 +17,8 @@ LOGIN_OTP_TTL = 60 * 10
 MAX_OTP_ATTEMPTS = 5
 
 MAX_FREE_USER_GAMES = 5
+
+# Celery Task Configuration
+EMAIL_TASK_RETRY_BACKOFF = 5  # Retry backoff for email tasks (seconds)
+EMAIL_TASK_MAX_RETRIES = 3  # Max retries for email tasks
+CORE_TASK_MAX_RETRIES = 3  # Max retries for core tasks

@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.db import transaction
 from rest_framework import status
+from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -25,7 +26,7 @@ from users.serializers import (
     UserCreateSerializer,
     UserSerializer,
 )
-from users.tasks import send_verification_email
+from users.tasks import send_verification_email, soft_delete_user_data
 
 User = get_user_model()
 
@@ -99,7 +100,27 @@ class UserViewSet(ModelViewSet):
             raise ValidationError("Admins cannot delete their own account")
 
         blacklist_all_refresh_tokens_for_user(instance)
+        transaction.on_commit(lambda: soft_delete_user_data.delay(instance.id))
         instance.delete()
+
+    @transaction.atomic
+    @action(methods=["post"], detail=True, url_path="restore-user")
+    def restore_user(self, request, pk):
+        user = self.get_object()
+        try:
+            user.is_active = True
+            user.deleted_at = None
+            user.save(update_fields=["is_active", "deleted_at"])
+
+            return Response(
+                {"message": "User restored successfully."},
+                status=status.HTTP_200_OK,
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
 
 class MeAPIView(APIView):
@@ -143,6 +164,7 @@ class MeAPIView(APIView):
             raise ValidationError({"refresh": "Invalid or expired refresh token"})
         revoke_access_token(request.auth)
         blacklist_all_refresh_tokens_for_user(request.user)
+        transaction.on_commit(lambda: soft_delete_user_data.delay(request.user.id))
         request.user.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 

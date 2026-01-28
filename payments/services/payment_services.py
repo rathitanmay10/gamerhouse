@@ -36,17 +36,6 @@ class PaymentService:
     def create_order(tenant: Tenant, admin: User, amount: int) -> Dict[str, Any]:
         """
         Create a Razorpay order and Payment record.
-
-        Args:
-            tenant: The tenant purchasing premium
-            admin: The admin user making the purchase
-            amount: Amount in INR (will be converted to paise)
-
-        Returns:
-            Dict containing order details
-
-        Raises:
-            TenantAlreadyPremiumError: If tenant is already premium
         """
         # Check if tenant is already premium
         if tenant.status == TenantStatus.PREMIUM:
@@ -55,7 +44,6 @@ class PaymentService:
 
         amount_paise = amount * 100
 
-        # Create Razorpay order
         try:
             razorpay_order = client.order.create(
                 {
@@ -68,7 +56,6 @@ class PaymentService:
             logger.error(f"Failed to create Razorpay order: {e}")
             raise
 
-        # Create Payment record
         payment = Payment.objects.create(
             tenant=tenant,
             admin=admin,
@@ -119,16 +106,13 @@ class PaymentService:
         if payment.tenant_id != tenant.id:
             raise TenantMismatchError("Payment does not belong to this tenant")
 
-        # Idempotency
         if payment.status in [PaymentStatus.VERIFIED, PaymentStatus.ACTIVATED]:
             return payment
 
-        # Save ASAP so fetch() never gets None
         payment.razorpay_payment_id = razorpay_payment_id
         payment.razorpay_signature = razorpay_signature
         payment.save()
 
-        # 1. Signature verification
         try:
             client.utility.verify_payment_signature(
                 {
@@ -143,12 +127,9 @@ class PaymentService:
             payment.save()
             raise PaymentVerificationError("Invalid payment signature")
 
-        # 2. Fetch payment (NOW safe to fetch)
         rp_payment = client.payment.fetch(razorpay_payment_id)
         if rp_payment.get("status") != "captured":
             raise PaymentVerificationError("Payment not captured yet")
-
-        # 3. State transition
         payment.mark_verified()
         payment.save()
 
@@ -160,25 +141,11 @@ class PaymentService:
         """
         Activate premium subscription for a verified payment.
         This operation is idempotent.
-
-        Args:
-            payment_id: UUID of the payment
-
-        Returns:
-            True if activation successful, False if already activated
-
-        Raises:
-            InvalidStateTransitionError: If payment not in correct state
         """
-        # Lock payment for update
         payment = Payment.objects.select_for_update().get(id=payment_id)
-
-        # Check if already activated (idempotency)
         if payment.status == PaymentStatus.ACTIVATED:
             logger.info(f"Payment {payment.id} already activated")
             return False
-
-        # Validate payment is verified
         if payment.status != PaymentStatus.VERIFIED:
             logger.error(
                 f"Cannot activate payment {payment.id} in state {payment.status}"
@@ -189,13 +156,10 @@ class PaymentService:
 
         tenant = payment.tenant
 
-        # Update tenant status
         if tenant.status != TenantStatus.PREMIUM:
             tenant.status = TenantStatus.PREMIUM
             tenant.save()
             logger.info(f"Tenant {tenant.id} status updated to PREMIUM")
-
-        # Create or update subscription
         subscription, created = Subscription.objects.get_or_create(
             tenant=tenant, defaults={"status": SubscriptionStatus.NONE}
         )
@@ -204,7 +168,6 @@ class PaymentService:
             subscription.activate(payment=payment)
             logger.info(f"Subscription activated for tenant {tenant.id}")
 
-        # Mark payment as activated
         payment.mark_activated()
         payment.save()
 
@@ -218,31 +181,22 @@ class PaymentService:
     def reconcile_payment(payment_id: str) -> bool:
         """
         Reconcile payment status with Razorpay (for polling).
-
-        Args:
-            payment_id: UUID of the payment
-
-        Returns:
-            True if payment updated, False otherwise
         """
         try:
             payment = Payment.objects.select_for_update().get(id=payment_id)
 
-            # Skip if in terminal state
             if payment.is_terminal_state():
                 logger.debug(
                     f"Payment {payment.id} in terminal state, skipping reconciliation"
                 )
                 return False
 
-            # Skip if no payment ID yet
             if not payment.razorpay_payment_id:
                 logger.debug(
                     f"Payment {payment.id} has no razorpay_payment_id, skipping"
                 )
                 return False
 
-            # Fetch payment status from Razorpay
             razorpay_payment = client.payment.fetch(payment.razorpay_payment_id)
 
             razorpay_status = razorpay_payment.get("status")
@@ -251,17 +205,22 @@ class PaymentService:
                 f"local={payment.status}, razorpay={razorpay_status}"
             )
 
-            # Update based on Razorpay status
             if razorpay_status == "captured":
                 if payment.status == PaymentStatus.CREATED:
                     payment.status = PaymentStatus.PAID
                     payment.save()
+
+                    payment.mark_verified()
+                    payment.save()
+                    
+                    PaymentService.activate_premium(str(payment.id))
+                    
                     logger.info(
-                        f"Payment {payment.id} updated to PAID via reconciliation"
+                        f"Payment {payment.id} reconciled, verified, and activated"
                     )
                     return True
                 elif payment.status == PaymentStatus.PAID:
-                    # Already marked as paid, no change needed
+
                     return False
 
             elif razorpay_status == "failed":

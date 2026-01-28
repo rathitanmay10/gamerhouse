@@ -31,34 +31,17 @@ class RazorpayWebhookAPIView(APIView):
         signature = request.headers.get("X-Razorpay-Signature", "")
         body = request.body
 
-        # Verify webhook signature
         try:
             client.utility.verify_webhook_signature(
                 body.decode("utf-8"), signature, settings.RAZORPAY_WEBHOOK_SECRET
             )
         except Exception as e:
             logger.error(f"Webhook signature verification failed: {e}")
-            # Return 200 to prevent Razorpay from retrying invalid requests
             return Response({"error": "Invalid signature"}, status=200)
 
         try:
             payload = request.data
-
-            # Extract event details
-            # Razorpay webhook payload structure:
-            # {
-            #   "entity": "event",
-            #   "account_id": "...",
-            #   "event": "payment.captured",
-            #   "contains": ["payment"],
-            #   "payload": { ... },
-            #   "created_at": 1234567890
-            # }
             event_type = payload.get("event")
-
-            # Generate unique event ID from Razorpay's event data
-            # Razorpay doesn't provide a unique event ID, so we create one
-            # from the payment ID and event type
             payment_entity = (
                 payload.get("payload", {}).get("payment", {}).get("entity", {})
             )
@@ -67,12 +50,9 @@ class RazorpayWebhookAPIView(APIView):
 
             logger.info(f"Received webhook: {event_type}, event_id: {event_id}")
 
-            # Check idempotency
             if WebhookService.is_duplicate_event(event_id):
                 logger.info(f"Duplicate webhook event {event_id}, skipping")
                 return Response({"status": "duplicate"}, status=200)
-
-            # Log webhook event
             webhook_event = WebhookService.log_webhook_event(
                 event_id=event_id,
                 event_type=event_type,
@@ -80,8 +60,7 @@ class RazorpayWebhookAPIView(APIView):
                 raw_body=body.decode("utf-8"),
             )
 
-            # Process webhook asynchronously
-            if event_type == "payment.captured":
+            if event_type in ["payment.captured", "payment.failed"]:
                 process_webhook_task.delay(payload, str(webhook_event.id))
                 logger.info(f"Queued webhook processing for event {event_id}")
             else:
@@ -91,5 +70,4 @@ class RazorpayWebhookAPIView(APIView):
 
         except Exception as e:
             logger.error(f"Error processing webhook: {e}", exc_info=True)
-            # Always return 200 to prevent Razorpay from retrying
             return Response({"status": "error"}, status=200)

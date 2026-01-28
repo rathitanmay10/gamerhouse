@@ -18,6 +18,9 @@ from tenant_games.serializers import (
 
 
 class TenantGameViewSet(ModelViewSet):
+    """
+    Tenant Game ViewSet
+    """
     permission_classes = [TenantGamePermission]
     serializer_class = TenantGameMappingSerializer
     http_method_names = ["get", "post", "delete", "options", "head"]
@@ -25,6 +28,9 @@ class TenantGameViewSet(ModelViewSet):
     filterset_class = TenantGameFilter
 
     def get_queryset(self):
+        """
+        Get queryset for TenantGameViewSet
+        """
         user = self.request.user
 
         qs = TenantGame.objects.select_related(
@@ -42,6 +48,9 @@ class TenantGameViewSet(ModelViewSet):
             raise PermissionDenied("Not allowed.")
 
     def get_serializer_class(self):
+        """
+        Get serializer class based on user role and action
+        """
         user = self.request.user
         if self.action == "create":
             return TenantGameMappingSerializer
@@ -61,6 +70,9 @@ class TenantGameViewSet(ModelViewSet):
 
     @action(methods=["post"], detail=False, url_path="bulk-add")
     def bulk_add(self, request):
+        """
+        Bulk add games to tenant games
+        """
         serializer = TenantGameBulkAddSerializer(
             data=request.data,
             context={"request": request},
@@ -71,6 +83,9 @@ class TenantGameViewSet(ModelViewSet):
 
     @action(methods=["post"], detail=False, url_path="bulk-delete")
     def bulk_delete(self, request):
+        """
+        Bulk delete games from tenant games
+        """
         serializer = TenantGameBulkDeleteSerializer(
             data=request.data,
             context={"request": request},

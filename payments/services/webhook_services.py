@@ -18,7 +18,6 @@ logger = logging.getLogger(__name__)
 
 
 class WebhookService:
-    """Service for handling webhook events."""
 
     @staticmethod
     def is_duplicate_event(event_id: str) -> bool:
@@ -36,16 +35,6 @@ class WebhookService:
     ) -> WebhookEvent:
         """
         Log webhook event for idempotency and audit.
-
-        Args:
-            event_id: Unique event ID from Razorpay
-            event_type: Event type (e.g., "payment.captured")
-            payload: Parsed JSON payload
-            raw_body: Raw request body
-            status: Initial status
-
-        Returns:
-            WebhookEvent object
         """
         webhook_event = WebhookEvent.objects.create(
             event_id=event_id,
@@ -65,16 +54,9 @@ class WebhookService:
     ) -> bool:
         """
         Process payment.captured webhook event.
-
-        Args:
-            payload: Webhook payload
-            webhook_event: WebhookEvent object
-
-        Returns:
-            True if processed successfully
         """
         try:
-            # Extract payment data
+
             payment_entity = (
                 payload.get("payload", {}).get("payment", {}).get("entity", {})
             )
@@ -89,7 +71,6 @@ class WebhookService:
                 webhook_event.save()
                 return False
 
-            # Find and lock payment
             try:
                 payment = Payment.objects.select_for_update().get(
                     razorpay_order_id=razorpay_order_id
@@ -101,7 +82,6 @@ class WebhookService:
                 webhook_event.save()
                 return False
 
-            # Check if already processed (idempotency)
             if payment.status in [PaymentStatus.VERIFIED, PaymentStatus.ACTIVATED]:
                 logger.info(
                     f"Payment {payment.id} already verified/activated, skipping webhook"
@@ -111,15 +91,88 @@ class WebhookService:
                 webhook_event.save()
                 return True
 
-            # Update payment to PAID status
             if payment.can_transition_to(PaymentStatus.PAID):
                 payment.status = PaymentStatus.PAID
                 payment.razorpay_payment_id = razorpay_payment_id
                 payment.save()
-                logger.info(f"Payment {payment.id} marked as PAID via webhook")
+                
+                payment.mark_verified()
+                payment.save()
+                
+                from payments.services.payment_services import PaymentService
+                PaymentService.activate_premium(str(payment.id))
 
-            # Mark webhook as processed
+                logger.info(f"Payment {payment.id} marked as PAID, VERIFIED and ACTIVATED via webhook")
+
             webhook_event.status = WebhookEventStatus.PROCESSED
+            webhook_event.processed_at = timezone.now()
+            webhook_event.save()
+
+            logger.info(
+                f"Webhook event {webhook_event.event_id} processed successfully"
+            )
+            return True
+
+        except Exception as e:
+            logger.error(
+                f"Error processing webhook event {webhook_event.event_id}: {e}"
+            )
+            webhook_event.status = WebhookEventStatus.FAILED
+            webhook_event.error_message = str(e)
+            webhook_event.retry_count += 1
+            webhook_event.save()
+            return False
+
+    @staticmethod
+    @transaction.atomic
+    def process_payment_failed(
+        payload: Dict[str, Any], webhook_event: WebhookEvent
+    ) -> bool:
+        """
+        Process payment.failed webhook event.
+        """
+        try:
+            payment_entity = (
+                payload.get("payload", {}).get("payment", {}).get("entity", {})
+            )
+
+            razorpay_order_id = payment_entity.get("order_id")
+            razorpay_payment_id = payment_entity.get("id")
+
+            if not razorpay_order_id or not razorpay_payment_id:
+                logger.error("Missing order_id or payment_id in webhook payload")
+                webhook_event.status = WebhookEventStatus.FAILED
+                webhook_event.error_message = "Missing required fields in payload"
+                webhook_event.save()
+                return False
+
+            try:
+                payment = Payment.objects.select_for_update().get(
+                    razorpay_order_id=razorpay_order_id
+                )
+            except Payment.DoesNotExist:
+                logger.error(f"Payment not found for order_id: {razorpay_order_id}")
+                webhook_event.status = WebhookEventStatus.FAILED
+                webhook_event.error_message = f"Payment not found: {razorpay_order_id}"
+                webhook_event.save()
+                return False
+
+            if payment.status in [PaymentStatus.VERIFIED, PaymentStatus.ACTIVATED, PaymentStatus.FAILED]:
+                logger.info(
+                    f"Payment {payment.id} already in terminal state ({payment.status}), skipping webhook"
+                )
+                webhook_event.status = WebhookEventStatus.FAILED if payment.status == PaymentStatus.FAILED else WebhookEventStatus.PROCESSED
+                webhook_event.processed_at = timezone.now()
+                webhook_event.save()
+                return True
+
+            if payment.can_transition_to(PaymentStatus.FAILED):
+                payment.status = PaymentStatus.FAILED
+                payment.razorpay_payment_id = razorpay_payment_id
+                payment.save()
+                logger.info(f"Payment {payment.id} marked as FAILED via webhook")
+
+            webhook_event.status = WebhookEventStatus.FAILED
             webhook_event.processed_at = timezone.now()
             webhook_event.save()
 

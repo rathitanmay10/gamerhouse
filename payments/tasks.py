@@ -4,6 +4,19 @@ from datetime import timedelta
 from celery import shared_task
 from django.utils import timezone
 
+from .constants import (
+    CELERY_MAX_RETRIES,
+    CELERY_RETRY_BACKOFF_BASE,
+    PAYMENT_ABANDON_MINUTES,
+    POLLING_BATCH_SIZE,
+    POLLING_CUTOFF_MINUTES,
+    POLLING_INTERVAL_THRESHOLD_1,
+    POLLING_INTERVAL_THRESHOLD_2,
+    POLLING_INTERVAL_THRESHOLD_3,
+    POLLING_MODULO_1,
+    POLLING_MODULO_2,
+    POLLING_MODULO_3,
+)
 from .enums import PaymentStatus, WebhookEventStatus
 from .models import Payment, WebhookEvent
 from .services import PaymentService, WebhookService
@@ -11,7 +24,7 @@ from .services import PaymentService, WebhookService
 logger = logging.getLogger(__name__)
 
 
-@shared_task(bind=True, max_retries=3)
+@shared_task(bind=True, max_retries=CELERY_MAX_RETRIES)
 def activate_premium_task(self, payment_id: str):
     """
     Activate premium subscription for a verified payment.
@@ -38,10 +51,10 @@ def activate_premium_task(self, payment_id: str):
         )
 
         # Retry with exponential backoff
-        raise self.retry(exc=e, countdown=2**self.request.retries * 60)
+        raise self.retry(exc=e, countdown=2**self.request.retries * CELERY_RETRY_BACKOFF_BASE)
 
 
-@shared_task(bind=True, max_retries=3)
+@shared_task(bind=True, max_retries=CELERY_MAX_RETRIES)
 def process_webhook_task(self, payload: dict, webhook_event_id: str):
     """
     Process webhook event asynchronously.
@@ -65,7 +78,8 @@ def process_webhook_task(self, payload: dict, webhook_event_id: str):
 
         if event_type == "payment.captured":
             WebhookService.process_payment_captured(payload, webhook_event)
-
+        elif event_type == "payment.failed":
+            WebhookService.process_payment_failed(payload, webhook_event)
         else:
             logger.info(f"Ignoring webhook event type: {event_type}")
             webhook_event.status = WebhookEventStatus.PROCESSED
@@ -88,7 +102,7 @@ def process_webhook_task(self, payload: dict, webhook_event_id: str):
             pass
 
         # Retry with exponential backoff
-        raise self.retry(exc=e, countdown=2**self.request.retries * 60)
+        raise self.retry(exc=e, countdown=2**self.request.retries * CELERY_RETRY_BACKOFF_BASE)
 
 
 @shared_task
@@ -108,13 +122,13 @@ def polling_reconcile_task():
 
     # Find payments that need reconciliation
     # Exclude very recent payments (< 2 minutes old) to avoid race conditions
-    cutoff_time = timezone.now() - timedelta(minutes=2)
+    cutoff_time = timezone.now() - timedelta(minutes=POLLING_CUTOFF_MINUTES)
 
     pending_payments = Payment.objects.filter(
         status__in=[PaymentStatus.CREATED, PaymentStatus.PAID],
         razorpay_payment_id__isnull=False,  # Must have payment ID to poll
         updated_at__lt=cutoff_time,  # Not updated very recently
-    ).order_by("updated_at")[:50]  # Limit batch size
+    ).order_by("updated_at")[:POLLING_BATCH_SIZE]
 
     reconciled_count = 0
 
@@ -123,22 +137,18 @@ def polling_reconcile_task():
         payment_age_minutes = (timezone.now() - payment.created_at).total_seconds() / 60
 
         # Skip if payment is too old (> 24 hours) - likely abandoned
-        if payment_age_minutes > 1440:  # 24 hours
+        if payment_age_minutes > PAYMENT_ABANDON_MINUTES:
             logger.info(
                 f"Payment {payment.id} is too old ({payment_age_minutes:.0f} min), skipping"
             )
             continue
 
         # Exponential backoff: poll less frequently as payment gets older
-        # First 5 min: every poll cycle
-        # 5-15 min: every other cycle
-        # 15-60 min: every 4th cycle
-        # > 60 min: every 8th cycle
-        if payment_age_minutes > 60 and payment.updated_at.minute % 8 != 0:
+        if payment_age_minutes > POLLING_INTERVAL_THRESHOLD_3 and payment.updated_at.minute % POLLING_MODULO_3 != 0:
             continue
-        elif payment_age_minutes > 15 and payment.updated_at.minute % 4 != 0:
+        elif payment_age_minutes > POLLING_INTERVAL_THRESHOLD_2 and payment.updated_at.minute % POLLING_MODULO_2 != 0:
             continue
-        elif payment_age_minutes > 5 and payment.updated_at.minute % 2 != 0:
+        elif payment_age_minutes > POLLING_INTERVAL_THRESHOLD_1 and payment.updated_at.minute % POLLING_MODULO_1 != 0:
             continue
 
         try:

@@ -55,14 +55,6 @@ class Payment(models.Model):
     def can_transition_to(self, new_status: str) -> bool:
         """
         Validates if the payment can transition to the new status.
-
-        Valid transitions:
-        CREATED → PAID, FAILED, CANCELLED
-        PAID → VERIFIED, FAILED
-        VERIFIED → ACTIVATED, FAILED
-        ACTIVATED → (terminal state)
-        FAILED → (terminal state)
-        CANCELLED → (terminal state)
         """
         valid_transitions = {
             PaymentStatus.CREATED: [

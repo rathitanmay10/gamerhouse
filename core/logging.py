@@ -17,7 +17,6 @@ def get_logging_config():
 
     return {
         "version": 1,
-        # CRUCIAL → keep Django's default logging untouched
         "disable_existing_loggers": False,
         "formatters": {
             "json": {
@@ -27,12 +26,10 @@ def get_logging_config():
             }
         },
         "handlers": {
-            # Django default console — DO NOT TOUCH
             "console": {
                 "class": "logging.StreamHandler",
                 "level": LOG_LEVEL,
             },
-            # Only middleware writes to file
             "middleware_file": {
                 "class": "logging.handlers.TimedRotatingFileHandler",
                 "filename": str(TODAY_LOG_FILE),
@@ -41,17 +38,15 @@ def get_logging_config():
                 "backupCount": 5,
                 "formatter": "json",
                 "encoding": "utf-8",
-                "level": LOG_LEVEL,
+                "level": "NOTSET",
             },
         },
         "loggers": {
-            # Django default → console only
             "django": {
                 "handlers": ["console"],
                 "level": "INFO",
                 "propagate": False,
             },
-            # Django request (404, error) → default behavior
             "django.request": {
                 "handlers": ["console"],
                 "level": "DEBUG",
@@ -67,14 +62,12 @@ def get_logging_config():
                 "level": "DEBUG",
                 "propagate": False,
             },
-            # Your middleware → file only
             "request_logger": {
-                "handlers": ["middleware_file"],
+                "handlers": ["middleware_file", "console"],
                 "level": LOG_LEVEL,
                 "propagate": False,
             },
         },
-        # Default console behavior
         "root": {
             "handlers": ["console"],
             "level": "INFO",

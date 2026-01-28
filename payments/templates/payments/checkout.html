@@ -95,6 +95,9 @@
                     },
                     "theme": {
                         "color": "#ffc107"
+                    },
+                    "retry": {
+                        "enabled": false
                     }
                 };
 
@@ -103,7 +106,7 @@
                     console.error(response.error);
                     button.disabled = false;
                     button.innerText = "Go Premium Now";
-                    messageDiv.innerText = "Payment Failed: " + response.error.description;
+                    messageDiv.innerText = "Payment Failed: " + response.error.description + ". Please try again to create a new order.";
                 });
 
                 rzp1.open();
