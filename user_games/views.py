@@ -1,5 +1,5 @@
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, NotFound
 from rest_framework.viewsets import ModelViewSet
 
 from core.enums import Roles
@@ -53,7 +53,7 @@ class UserGameNoteViewSet(ModelViewSet):
             try:
                 user_game = UserGame.objects.get(id=user_game_id, tenant=user.tenant)
             except UserGame.DoesNotExist:
-                raise PermissionDenied("UserGame not found.")
+                raise NotFound("UserGame not found.")
 
             if user.role == Roles.GAMER and user_game.user != user:
                 raise PermissionDenied(
