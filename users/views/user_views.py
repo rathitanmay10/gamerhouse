@@ -54,10 +54,8 @@ class UserViewSet(ModelViewSet):
         if user.role == Roles.SUPER_ADMIN:
             qs = User.all_objects.filter(role=Roles.ADMIN)
         elif user.role == Roles.ADMIN:
-            qs = (
-                User.all_objects.filter(tenant_id=user.tenant_id)
-                .exclude(role=Roles.SUPER_ADMIN)
-                .exclude(pk=user.pk)
+            qs = User.all_objects.filter(tenant_id=user.tenant_id).exclude(
+                role=Roles.SUPER_ADMIN
             )
         else:
             return User.objects.none()
