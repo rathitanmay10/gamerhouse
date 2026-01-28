@@ -9,7 +9,7 @@ from payments.views import (
     VerifyPaymentAPIView,
     WebhookEventViewSet,
 )
-from payments.views.views_ui import PremiumCheckoutPage
+from payments.views.views_ui import PremiumCheckoutPage, payment_callback
 
 router = DefaultRouter()
 router.register(r"admin/payments", PaymentViewSet, basename="admin-payment")
@@ -29,5 +29,6 @@ urlpatterns = [
         "payments/webhook/", RazorpayWebhookAPIView.as_view(), name="payments-webhook"
     ),
     path("payments/checkout/", PremiumCheckoutPage.as_view(), name="premium-checkout"),
+    path("payments/callback/", payment_callback),
     path("", include(router.urls)),
 ]
