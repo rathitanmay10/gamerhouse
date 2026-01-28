@@ -35,7 +35,7 @@ urlpatterns = [
         name="resend-verification",
     ),
     path(
-        "auth/tenant/<uuid:tenant_id>/register/",
+        "auth/register/",
         RegisterAPIView.as_view(),
         name="tenant-register",
     ),

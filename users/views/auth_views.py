@@ -76,7 +76,13 @@ class RegisterAPIView(APIView):
     permission_classes = [AllowAny]
 
     @transaction.atomic
-    def post(self, request, tenant_id):
+    def post(self, request):
+        tenant_id = request.headers.get("X-Tenant-ID")
+        if not tenant_id:
+            return Response(
+                {"detail": "Tenant header missing."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         serializer = RegisterSerializer(
             data=request.data,
             context={"tenant_id": tenant_id},

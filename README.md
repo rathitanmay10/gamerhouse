@@ -337,7 +337,7 @@ The API will be available at `http://localhost:8000/api/v1/`
 ## API Endpoints
 
 ### Authentication
-* `POST /api/v1/auth/tenant/<tenant_id>/register/` – Register new user
+* `POST /api/v1/auth/register/` – Register new user (tenant passed in header - `X-Tenant-ID`)
 * `POST /api/v1/auth/verify-email/` – Verify email address
 * `POST /api/v1/auth/resend-verification/` – Resend verification email
 * `POST /api/v1/auth/login/` – Login (sends OTP)
