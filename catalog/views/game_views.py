@@ -20,7 +20,7 @@ class GameViewSet(ModelViewSet):
     permission_classes = [IsSuperAdminOrAdminReadOnly]
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-    filterset_fields = {"genre": ["in"], "platforms": ["in"]}
+    filterset_fields = {"genre": ["in"], "platforms": ["exact", "in"]}
     search_fields = ["title"]
 
     def get_queryset(self):
