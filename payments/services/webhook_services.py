@@ -92,8 +92,6 @@ class WebhookService:
             if payment.can_transition_to(PaymentStatus.PAID):
                 payment.status = PaymentStatus.PAID
                 payment.razorpay_payment_id = razorpay_payment_id
-                payment.save()
-
                 payment.mark_verified()
                 payment.save()
 
