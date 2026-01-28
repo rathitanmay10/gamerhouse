@@ -178,6 +178,7 @@ class PaymentService:
         return True
 
     @staticmethod
+    @transaction.atomic
     def reconcile_payment(payment_id: str) -> bool:
         """
         Reconcile payment status with Razorpay (for polling).
@@ -208,8 +209,6 @@ class PaymentService:
             if razorpay_status == "captured":
                 if payment.status == PaymentStatus.CREATED:
                     payment.status = PaymentStatus.PAID
-                    payment.save()
-
                     payment.mark_verified()
                     payment.save()
 
