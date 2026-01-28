@@ -12,7 +12,6 @@ def get_logging_config():
     LOGS_DIR = BASE_DIR / "logs"
     LOGS_DIR.mkdir(exist_ok=True)
 
-
     return {
         "version": 1,
         "disable_existing_loggers": False,
