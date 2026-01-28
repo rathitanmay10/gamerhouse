@@ -10,6 +10,8 @@ class PremiumCheckoutPage(View):
         return render(
             request, "payments/checkout.html", {"premium_price": PREMIUM_PRICE_INR}
         )
+
+
 @csrf_exempt
 def payment_callback(request):
     return render(request, "payments/callback.html")

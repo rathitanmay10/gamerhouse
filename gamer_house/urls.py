@@ -1,8 +1,8 @@
 from django.contrib import admin
 from django.urls import include, path
 
-from users.views import ResetPasswordPageView
 from payments.views.views_ui import payment_callback
+from users.views import ResetPasswordPageView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
