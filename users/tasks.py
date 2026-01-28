@@ -98,7 +98,6 @@ def send_otp_email(self, email, otp):
     )
 
 
-
 @shared_task(
     bind=True,
     autoretry_for=(Exception,),

@@ -18,7 +18,6 @@ logger = logging.getLogger(__name__)
 
 
 class WebhookService:
-
     @staticmethod
     def is_duplicate_event(event_id: str) -> bool:
         """Check if webhook event already processed."""
@@ -56,7 +55,6 @@ class WebhookService:
         Process payment.captured webhook event.
         """
         try:
-
             payment_entity = (
                 payload.get("payload", {}).get("payment", {}).get("entity", {})
             )
@@ -95,14 +93,17 @@ class WebhookService:
                 payment.status = PaymentStatus.PAID
                 payment.razorpay_payment_id = razorpay_payment_id
                 payment.save()
-                
+
                 payment.mark_verified()
                 payment.save()
-                
+
                 from payments.services.payment_services import PaymentService
+
                 PaymentService.activate_premium(str(payment.id))
 
-                logger.info(f"Payment {payment.id} marked as PAID, VERIFIED and ACTIVATED via webhook")
+                logger.info(
+                    f"Payment {payment.id} marked as PAID, VERIFIED and ACTIVATED via webhook"
+                )
 
             webhook_event.status = WebhookEventStatus.PROCESSED
             webhook_event.processed_at = timezone.now()
@@ -157,11 +158,19 @@ class WebhookService:
                 webhook_event.save()
                 return False
 
-            if payment.status in [PaymentStatus.VERIFIED, PaymentStatus.ACTIVATED, PaymentStatus.FAILED]:
+            if payment.status in [
+                PaymentStatus.VERIFIED,
+                PaymentStatus.ACTIVATED,
+                PaymentStatus.FAILED,
+            ]:
                 logger.info(
                     f"Payment {payment.id} already in terminal state ({payment.status}), skipping webhook"
                 )
-                webhook_event.status = WebhookEventStatus.FAILED if payment.status == PaymentStatus.FAILED else WebhookEventStatus.PROCESSED
+                webhook_event.status = (
+                    WebhookEventStatus.FAILED
+                    if payment.status == PaymentStatus.FAILED
+                    else WebhookEventStatus.PROCESSED
+                )
                 webhook_event.processed_at = timezone.now()
                 webhook_event.save()
                 return True

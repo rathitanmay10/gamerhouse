@@ -8,6 +8,7 @@ class IsTenantAdminOrGamer(BasePermission):
     Admin can only read their own tenant.
     Super Admin can CRUD any tenant.
     """
+
     def has_permission(self, request, view):
         user = request.user
         return user.role in [Roles.ADMIN, Roles.GAMER]
@@ -29,6 +30,7 @@ class UserGameNotePermission(BasePermission):
     Admin can only read their own tenant.
     Super Admin can CRUD any tenant.
     """
+
     def has_permission(self, request, view):
         user = request.user
         return user.role in [Roles.ADMIN, Roles.GAMER]

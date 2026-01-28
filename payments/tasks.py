@@ -51,7 +51,9 @@ def activate_premium_task(self, payment_id: str):
         )
 
         # Retry with exponential backoff
-        raise self.retry(exc=e, countdown=2**self.request.retries * CELERY_RETRY_BACKOFF_BASE)
+        raise self.retry(
+            exc=e, countdown=2**self.request.retries * CELERY_RETRY_BACKOFF_BASE
+        )
 
 
 @shared_task(bind=True, max_retries=CELERY_MAX_RETRIES)
@@ -102,7 +104,9 @@ def process_webhook_task(self, payload: dict, webhook_event_id: str):
             pass
 
         # Retry with exponential backoff
-        raise self.retry(exc=e, countdown=2**self.request.retries * CELERY_RETRY_BACKOFF_BASE)
+        raise self.retry(
+            exc=e, countdown=2**self.request.retries * CELERY_RETRY_BACKOFF_BASE
+        )
 
 
 @shared_task
@@ -144,11 +148,20 @@ def polling_reconcile_task():
             continue
 
         # Exponential backoff: poll less frequently as payment gets older
-        if payment_age_minutes > POLLING_INTERVAL_THRESHOLD_3 and payment.updated_at.minute % POLLING_MODULO_3 != 0:
+        if (
+            payment_age_minutes > POLLING_INTERVAL_THRESHOLD_3
+            and payment.updated_at.minute % POLLING_MODULO_3 != 0
+        ):
             continue
-        elif payment_age_minutes > POLLING_INTERVAL_THRESHOLD_2 and payment.updated_at.minute % POLLING_MODULO_2 != 0:
+        elif (
+            payment_age_minutes > POLLING_INTERVAL_THRESHOLD_2
+            and payment.updated_at.minute % POLLING_MODULO_2 != 0
+        ):
             continue
-        elif payment_age_minutes > POLLING_INTERVAL_THRESHOLD_1 and payment.updated_at.minute % POLLING_MODULO_1 != 0:
+        elif (
+            payment_age_minutes > POLLING_INTERVAL_THRESHOLD_1
+            and payment.updated_at.minute % POLLING_MODULO_1 != 0
+        ):
             continue
 
         try:

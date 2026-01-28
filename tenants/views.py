@@ -13,6 +13,7 @@ class TenantViewSet(ModelViewSet):
     Admin can only read their own tenant.
     Super Admin can CRUD any tenant.
     """
+
     permission_classes = [IsSuperAdminOrTenantAdminGetOwnTenant]
     serializer_class = TenantSerializer
 

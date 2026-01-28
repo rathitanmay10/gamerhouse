@@ -21,6 +21,7 @@ class TenantGameViewSet(ModelViewSet):
     """
     Tenant Game ViewSet
     """
+
     permission_classes = [TenantGamePermission]
     serializer_class = TenantGameMappingSerializer
     http_method_names = ["get", "post", "delete", "options", "head"]

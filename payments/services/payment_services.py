@@ -212,15 +212,14 @@ class PaymentService:
 
                     payment.mark_verified()
                     payment.save()
-                    
+
                     PaymentService.activate_premium(str(payment.id))
-                    
+
                     logger.info(
                         f"Payment {payment.id} reconciled, verified, and activated"
                     )
                     return True
                 elif payment.status == PaymentStatus.PAID:
-
                     return False
 
             elif razorpay_status == "failed":

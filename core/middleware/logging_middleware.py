@@ -5,7 +5,7 @@ import uuid
 
 from django.utils.deprecation import MiddlewareMixin
 
-from core.context import set_correlation_id, get_correlation_id
+from core.context import get_correlation_id, set_correlation_id
 
 logger = logging.getLogger("request_logger")
 
@@ -117,5 +117,3 @@ class RequestResponseLoggingMiddleware(MiddlewareMixin):
         else:
             ip = request.META.get("REMOTE_ADDR", "")
         return ip
-
-
