@@ -11,6 +11,7 @@ from typing import Any, Dict
 from django.conf import settings
 from django.db import transaction
 
+from core.context import get_correlation_id
 from core.enums import TenantStatus
 from payments.constants import PAYMENT_CAPTURE_MODE, PAYMENT_CURRENCY
 from payments.enums import PaymentStatus, SubscriptionStatus
@@ -39,7 +40,10 @@ class PaymentService:
         """
         # Check if tenant is already premium
         if tenant.status == TenantStatus.PREMIUM:
-            logger.warning(f"Tenant {tenant.id} is already premium")
+            logger.warning(
+                f"Tenant {tenant.id} is already premium",
+                extra={"correlation_id": get_correlation_id(), "tenant_id": tenant.id},
+            )
             raise TenantAlreadyPremiumError("Tenant is already premium")
 
         amount_paise = amount * 100
@@ -53,7 +57,10 @@ class PaymentService:
                 }
             )
         except Exception as e:
-            logger.error(f"Failed to create Razorpay order: {e}")
+            logger.error(
+                f"Failed to create Razorpay order: {e}",
+                extra={"correlation_id": get_correlation_id(), "tenant_id": tenant.id},
+            )
             raise
 
         payment = Payment.objects.create(
@@ -70,7 +77,13 @@ class PaymentService:
 
         logger.info(
             f"Created payment {payment.id} for tenant {tenant.id}, "
-            f"order_id: {razorpay_order['id']}"
+            f"order_id: {razorpay_order['id']}",
+            extra={
+                "correlation_id": get_correlation_id(),
+                "payment_id": str(payment.id),
+                "tenant_id": tenant.id,
+                "order_id": razorpay_order["id"],
+            },
         )
 
         return {
@@ -144,11 +157,22 @@ class PaymentService:
         """
         payment = Payment.objects.select_for_update().get(id=payment_id)
         if payment.status == PaymentStatus.ACTIVATED:
-            logger.info(f"Payment {payment.id} already activated")
+            logger.info(
+                f"Payment {payment.id} already activated",
+                extra={
+                    "correlation_id": get_correlation_id(),
+                    "payment_id": str(payment.id),
+                },
+            )
             return False
         if payment.status != PaymentStatus.VERIFIED:
             logger.error(
-                f"Cannot activate payment {payment.id} in state {payment.status}"
+                f"Cannot activate payment {payment.id} in state {payment.status}",
+                extra={
+                    "correlation_id": get_correlation_id(),
+                    "payment_id": str(payment.id),
+                    "status": payment.status,
+                },
             )
             raise InvalidStateTransitionError(
                 f"Payment must be verified before activation (current: {payment.status})"
@@ -159,20 +183,31 @@ class PaymentService:
         if tenant.status != TenantStatus.PREMIUM:
             tenant.status = TenantStatus.PREMIUM
             tenant.save()
-            logger.info(f"Tenant {tenant.id} status updated to PREMIUM")
+            logger.info(
+                f"Tenant {tenant.id} status updated to PREMIUM",
+                extra={"correlation_id": get_correlation_id(), "tenant_id": tenant.id},
+            )
         subscription, created = Subscription.objects.get_or_create(
             tenant=tenant, defaults={"status": SubscriptionStatus.NONE}
         )
 
         if subscription.status != SubscriptionStatus.ACTIVE:
             subscription.activate(payment=payment)
-            logger.info(f"Subscription activated for tenant {tenant.id}")
+            logger.info(
+                f"Subscription activated for tenant {tenant.id}",
+                extra={"correlation_id": get_correlation_id(), "tenant_id": tenant.id},
+            )
 
         payment.mark_activated()
         payment.save()
 
         logger.info(
-            f"Premium activated for tenant {tenant.id} via payment {payment.id}"
+            f"Premium activated for tenant {tenant.id} via payment {payment.id}",
+            extra={
+                "correlation_id": get_correlation_id(),
+                "tenant_id": tenant.id,
+                "payment_id": str(payment.id),
+            },
         )
 
         return True

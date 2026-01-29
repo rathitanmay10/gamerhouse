@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import ProtectedError
 
 from core.models import BaseModel
 
@@ -24,3 +25,16 @@ class TenantGame(BaseModel):
 
     def __str__(self):
         return f"{self.tenant.name} - {self.game.title}"
+
+    def delete(self, *args, **kwargs):
+        """
+        Override delete to respect on_delete=PROTECT for soft deletes.
+
+        Raises ProtectedError if any active user games reference this tenant game.
+        """
+        if self.user_games.exists():
+            raise ProtectedError(
+                "Cannot delete TenantGame because it is referenced by active UserGames.",
+                [self],
+            )
+        super().delete(*args, **kwargs)

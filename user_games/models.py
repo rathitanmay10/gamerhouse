@@ -10,6 +10,7 @@ class UserGame(BaseModel):
     )
     tenant_game = models.ForeignKey(
         "tenant_games.TenantGame",
+        related_name="user_games",
         on_delete=models.CASCADE,
         null=False,
         blank=False,

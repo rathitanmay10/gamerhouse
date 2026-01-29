@@ -11,6 +11,7 @@ from typing import Any, Dict
 from django.db import transaction
 from django.utils import timezone
 
+from core.context import get_correlation_id
 from payments.enums import PaymentStatus, WebhookEventStatus
 from payments.models import Payment, WebhookEvent
 
@@ -43,7 +44,10 @@ class WebhookService:
             status=status,
         )
 
-        logger.info(f"Logged webhook event {event_id} - {event_type}")
+        logger.info(
+            f"Logged webhook event {event_id} - {event_type}",
+            extra={"correlation_id": get_correlation_id(), "event_id": event_id},
+        )
         return webhook_event
 
     @staticmethod
@@ -63,7 +67,10 @@ class WebhookService:
             razorpay_payment_id = payment_entity.get("id")
 
             if not razorpay_order_id or not razorpay_payment_id:
-                logger.error("Missing order_id or payment_id in webhook payload")
+                logger.error(
+                    "Missing order_id or payment_id in webhook payload",
+                    extra={"correlation_id": get_correlation_id()},
+                )
                 webhook_event.status = WebhookEventStatus.FAILED
                 webhook_event.error_message = "Missing required fields in payload"
                 webhook_event.save()
@@ -74,7 +81,13 @@ class WebhookService:
                     razorpay_order_id=razorpay_order_id
                 )
             except Payment.DoesNotExist:
-                logger.error(f"Payment not found for order_id: {razorpay_order_id}")
+                logger.error(
+                    f"Payment not found for order_id: {razorpay_order_id}",
+                    extra={
+                        "correlation_id": get_correlation_id(),
+                        "order_id": razorpay_order_id,
+                    },
+                )
                 webhook_event.status = WebhookEventStatus.FAILED
                 webhook_event.error_message = f"Payment not found: {razorpay_order_id}"
                 webhook_event.save()
@@ -82,7 +95,11 @@ class WebhookService:
 
             if payment.status in [PaymentStatus.VERIFIED, PaymentStatus.ACTIVATED]:
                 logger.info(
-                    f"Payment {payment.id} already verified/activated, skipping webhook"
+                    f"Payment {payment.id} already verified/activated, skipping webhook",
+                    extra={
+                        "correlation_id": get_correlation_id(),
+                        "payment_id": str(payment.id),
+                    },
                 )
                 webhook_event.status = WebhookEventStatus.PROCESSED
                 webhook_event.processed_at = timezone.now()
@@ -100,7 +117,11 @@ class WebhookService:
                 PaymentService.activate_premium(str(payment.id))
 
                 logger.info(
-                    f"Payment {payment.id} marked as PAID, VERIFIED and ACTIVATED via webhook"
+                    f"Payment {payment.id} marked as PAID, VERIFIED and ACTIVATED via webhook",
+                    extra={
+                        "correlation_id": get_correlation_id(),
+                        "payment_id": str(payment.id),
+                    },
                 )
 
             webhook_event.status = WebhookEventStatus.PROCESSED
@@ -108,13 +129,21 @@ class WebhookService:
             webhook_event.save()
 
             logger.info(
-                f"Webhook event {webhook_event.event_id} processed successfully"
+                f"Webhook event {webhook_event.event_id} processed successfully",
+                extra={
+                    "correlation_id": get_correlation_id(),
+                    "event_id": webhook_event.event_id,
+                },
             )
             return True
 
         except Exception as e:
             logger.error(
-                f"Error processing webhook event {webhook_event.event_id}: {e}"
+                f"Error processing webhook event {webhook_event.event_id}: {e}",
+                extra={
+                    "correlation_id": get_correlation_id(),
+                    "event_id": webhook_event.event_id,
+                },
             )
             webhook_event.status = WebhookEventStatus.FAILED
             webhook_event.error_message = str(e)
@@ -139,7 +168,10 @@ class WebhookService:
             razorpay_payment_id = payment_entity.get("id")
 
             if not razorpay_order_id or not razorpay_payment_id:
-                logger.error("Missing order_id or payment_id in webhook payload")
+                logger.error(
+                    "Missing order_id or payment_id in webhook payload",
+                    extra={"correlation_id": get_correlation_id()},
+                )
                 webhook_event.status = WebhookEventStatus.FAILED
                 webhook_event.error_message = "Missing required fields in payload"
                 webhook_event.save()
@@ -150,7 +182,13 @@ class WebhookService:
                     razorpay_order_id=razorpay_order_id
                 )
             except Payment.DoesNotExist:
-                logger.error(f"Payment not found for order_id: {razorpay_order_id}")
+                logger.error(
+                    f"Payment not found for order_id: {razorpay_order_id}",
+                    extra={
+                        "correlation_id": get_correlation_id(),
+                        "order_id": razorpay_order_id,
+                    },
+                )
                 webhook_event.status = WebhookEventStatus.FAILED
                 webhook_event.error_message = f"Payment not found: {razorpay_order_id}"
                 webhook_event.save()
@@ -162,7 +200,12 @@ class WebhookService:
                 PaymentStatus.FAILED,
             ]:
                 logger.info(
-                    f"Payment {payment.id} already in terminal state ({payment.status}), skipping webhook"
+                    f"Payment {payment.id} already in terminal state ({payment.status}), skipping webhook",
+                    extra={
+                        "correlation_id": get_correlation_id(),
+                        "payment_id": str(payment.id),
+                        "status": payment.status,
+                    },
                 )
                 webhook_event.status = (
                     WebhookEventStatus.FAILED
@@ -177,20 +220,34 @@ class WebhookService:
                 payment.status = PaymentStatus.FAILED
                 payment.razorpay_payment_id = razorpay_payment_id
                 payment.save()
-                logger.info(f"Payment {payment.id} marked as FAILED via webhook")
+                logger.info(
+                    f"Payment {payment.id} marked as FAILED via webhook",
+                    extra={
+                        "correlation_id": get_correlation_id(),
+                        "payment_id": str(payment.id),
+                    },
+                )
 
             webhook_event.status = WebhookEventStatus.FAILED
             webhook_event.processed_at = timezone.now()
             webhook_event.save()
 
             logger.info(
-                f"Webhook event {webhook_event.event_id} processed successfully"
+                f"Webhook event {webhook_event.event_id} processed successfully",
+                extra={
+                    "correlation_id": get_correlation_id(),
+                    "event_id": webhook_event.event_id,
+                },
             )
             return True
 
         except Exception as e:
             logger.error(
-                f"Error processing webhook event {webhook_event.event_id}: {e}"
+                f"Error processing webhook event {webhook_event.event_id}: {e}",
+                extra={
+                    "correlation_id": get_correlation_id(),
+                    "event_id": webhook_event.event_id,
+                },
             )
             webhook_event.status = WebhookEventStatus.FAILED
             webhook_event.error_message = str(e)
