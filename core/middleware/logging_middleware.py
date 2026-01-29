@@ -81,31 +81,6 @@ class RequestResponseLoggingMiddleware(MiddlewareMixin):
 
         return response
 
-    def process_exception(self, request, exception):
-        """
-        Called when a view raises an unhandled exception. Logs error with full context for debugging.
-        """
-        execution_time = 0
-        if hasattr(request, "_start_time"):
-            execution_time = (time.time() - request._start_time) * 1000
-        correlation_id = get_correlation_id()
-        tenant_id = request.user.tenant_id if request.user.is_authenticated else None
-        user_id = request.user.id if request.user.is_authenticated else None
-        log_data = {
-            "correlation_id": correlation_id,
-            "method": request.method,
-            "path": request.path,
-            "execution_time_ms": round(execution_time, 2),
-            "tenant_id": tenant_id,
-            "user_id": user_id,
-            "error_type": exception.__class__.__name__,
-            "error_message": str(exception),
-            "stack_trace": traceback.format_exc(),
-        }
-
-        logger.error("Request failed with exception", extra=log_data, exc_info=True)
-        return None
-
     def _get_client_ip(self, request):
         """
         Extract client IP address from request.
