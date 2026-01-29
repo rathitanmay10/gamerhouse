@@ -22,3 +22,5 @@ MAX_FREE_USER_GAMES = 5
 EMAIL_TASK_RETRY_BACKOFF = 5  # Retry backoff for email tasks (seconds)
 EMAIL_TASK_MAX_RETRIES = 3  # Max retries for email tasks
 CORE_TASK_MAX_RETRIES = 3  # Max retries for core tasks
+
+CACHE_RESPONSE_TTL = 60 * 2

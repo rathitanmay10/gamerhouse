@@ -18,6 +18,6 @@ app.conf.beat_schedule = {
     },
     "polling-reconcile-task": {
         "task": "payments.tasks.polling_reconcile_task",
-        "schedule": crontab(minute="*/15"),
+        "schedule": crontab(minute="*/5"),
     },
 }

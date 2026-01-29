@@ -1,0 +1,39 @@
+diff --git a/core/constants.py b/core/constants.py
+index 89d4638..2f18133 100644
+--- a/core/constants.py
++++ b/core/constants.py
+@@ -22,3 +22,5 @@ MAX_FREE_USER_GAMES = 5
+ EMAIL_TASK_RETRY_BACKOFF = 5  # Retry backoff for email tasks (seconds)
+ EMAIL_TASK_MAX_RETRIES = 3  # Max retries for email tasks
+ CORE_TASK_MAX_RETRIES = 3  # Max retries for core tasks
++
++CACHE_RESPONSE_TTL = 60 * 2
+\ No newline at end of file
+diff --git a/core/decorators/cache_response.py b/core/decorators/cache_response.py
+index 10a20ca..c015a37 100644
+--- a/core/decorators/cache_response.py
++++ b/core/decorators/cache_response.py
+@@ -2,9 +2,9 @@ from functools import wraps
+ 
+ from django.core.cache import cache
+ from rest_framework.response import Response
++from core.constants import CACHE_RESPONSE_TTL
+ 
+-
+-def drf_cache_response(prefix: str, ttl: int = 120):
++def drf_cache_response(prefix: str, ttl: int = CACHE_RESPONSE_TTL):
+     """
+     Caches DRF responses with full query param support.
+     Example cache key:
+diff --git a/gamer_house/celery.py b/gamer_house/celery.py
+index c9c3f2b..d10268b 100644
+--- a/gamer_house/celery.py
++++ b/gamer_house/celery.py
+@@ -18,6 +18,6 @@ app.conf.beat_schedule = {
+     },
+     "polling-reconcile-task": {
+         "task": "payments.tasks.polling_reconcile_task",
+-        "schedule": crontab(minute="*/15"),
++        "schedule": crontab(minute="*/5"),
+     },
+ }
