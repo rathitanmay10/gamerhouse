@@ -83,6 +83,14 @@ class RegisterAPIView(APIView):
                 {"detail": "Tenant header missing."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        email = request.data.get("email").lower()
+        if not email:
+            raise ValidationError({"email": "This field is required."})
+        if cache.get(verify_email_key(email)):
+            return Response(
+                {"message": "Verification mail already sent. Verify or resend."},
+                status=status.HTTP_200_OK,
+            )
         serializer = RegisterSerializer(
             data=request.data,
             context={"tenant_id": tenant_id},
@@ -90,11 +98,6 @@ class RegisterAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data["email"].lower()
 
-        if cache.get(verify_email_key(email)):
-            return Response(
-                {"message": "Verification mail already sent. Verify or resend."},
-                status=status.HTTP_200_OK,
-            )
 
         serializer.save()
         token = generate_email_verification_token(email)
