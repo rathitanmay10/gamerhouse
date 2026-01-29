@@ -43,7 +43,7 @@ class CreateOrderAPIView(APIView):
             )
 
             logger.info(
-                f"Order created successfully for tenant {tenant} by user {request.user}",
+                f"Order created successfully for tenant {tenant} by user {request.user.id}",
                 extra={
                     "correlation_id": get_correlation_id(),
                     "tenant_id": tenant.id,

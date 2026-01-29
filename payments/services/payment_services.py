@@ -39,7 +39,11 @@ class PaymentService:
         Create a Razorpay order and Payment record.
         """
         # Check if tenant is already premium
-        if tenant.status == TenantStatus.PREMIUM:
+        subscription = getattr(tenant, "subscription", None)
+
+        if tenant.status == TenantStatus.PREMIUM or (
+            subscription and subscription.status == SubscriptionStatus.ACTIVE
+        ):
             logger.warning(
                 f"Tenant {tenant.id} is already premium",
                 extra={"correlation_id": get_correlation_id(), "tenant_id": tenant.id},
