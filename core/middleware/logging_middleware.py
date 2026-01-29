@@ -19,8 +19,7 @@ class RequestResponseLoggingMiddleware(MiddlewareMixin):
     - Tenant ID & User ID (audit trail and multi-tenant data isolation)
     - Execution time in milliseconds (performance monitoring)
     - Request/response lifecycle logging with proper log levels (INFO/WARNING/ERROR)
-    - Error logging with stack traces (debugging production issues)
-    - Async-safe logging (works with Celery & async views via thread-local storage)
+    - Async-safe logging (works with Celery & async views)
     """
 
     def process_request(self, request):
@@ -73,14 +72,12 @@ class RequestResponseLoggingMiddleware(MiddlewareMixin):
         if hasattr(response, "content"):
             log_data["response_size"] = len(response.content)
 
-        msg = f"{request.method} {request.path} - {response.status_code}"
-
         if response.status_code >= 500:
-            logger.error(f"Response sent with server error: {msg}", extra=log_data)
+            logger.error("Response sent with server error", extra=log_data)
         elif response.status_code >= 400:
-            logger.warning(f"Response sent with client error: {msg}", extra=log_data)
+            logger.warning("Response sent with client error", extra=log_data)
         else:
-            logger.info(f"Response sent: {msg}", extra=log_data)
+            logger.info("Response sent:", extra=log_data)
 
         return response
 
