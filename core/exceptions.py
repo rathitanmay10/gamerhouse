@@ -1,5 +1,6 @@
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import IntegrityError
+from django.db.models import ProtectedError
 from django.http import Http404
 from rest_framework import status
 from rest_framework.exceptions import APIException, NotFound, ValidationError
@@ -35,6 +36,14 @@ def custom_exception_handler(exc, context):
     if isinstance(exc, ValidationError):
         return Response(
             {"error": exc.detail},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if isinstance(exc, ProtectedError):
+        return Response(
+            {
+                "error": "Cannot delete this resource because it is referenced by other objects."
+            },
             status=status.HTTP_400_BAD_REQUEST,
         )
 
