@@ -32,10 +32,13 @@ class UserGameViewSet(ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        qs = (
-            UserGame.objects.filter(tenant=user.tenant)
-            .select_related("tenant_game__game")
-            .prefetch_related("tenant_game__game__platforms")
+        # qs = (
+        #     UserGame.objects.filter(tenant=user.tenant)
+        #     .select_related("tenant_game__game")
+        #     .prefetch_related("tenant_game__game__platforms")
+        # )
+        qs = UserGame.objects.select_related("tenant_game__game").prefetch_related(
+            "tenant_game__game__platforms"
         )
         if user.role == Roles.GAMER:
             qs = qs.filter(user=user)

@@ -43,7 +43,7 @@ class RequestResponseLoggingMiddleware(MiddlewareMixin):
             "user_id": user_id,
         }
         logger.info(
-            f"Request received: {request.method} {request.path}",
+            "Request received",
             extra=log_data,
         )
 

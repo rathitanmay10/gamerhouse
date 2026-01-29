@@ -32,21 +32,21 @@ class TenantGameViewSet(ModelViewSet):
         """
         Get queryset for TenantGameViewSet
         """
-        user = self.request.user
+        # user = self.request.user
 
         qs = TenantGame.objects.select_related(
             "tenant", "game", "game__genre"
         ).prefetch_related("game__platforms")
 
         # qs = TenantGame.objects.all()
+        return qs
+        # if user.role == Roles.SUPER_ADMIN:
+        #     return qs
 
-        if user.role == Roles.SUPER_ADMIN:
-            return qs
-
-        elif user.role in [Roles.ADMIN, Roles.GAMER]:
-            return qs.filter(tenant=user.tenant)
-        else:
-            raise PermissionDenied("Not allowed.")
+        # elif user.role in [Roles.ADMIN, Roles.GAMER]:
+        #     return qs.filter(tenant=user.tenant)
+        # else:
+        #     raise PermissionDenied("Not allowed.")
 
     def get_serializer_class(self):
         """

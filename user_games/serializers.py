@@ -82,6 +82,15 @@ class UserGameSerializer(serializers.ModelSerializer):
         """
         request_user = self.context["request"].user
         instance = self.instance
+        if request_user.role == Roles.ADMIN:
+            incoming_user = attrs.get("user")
+            if incoming_user is None:
+                raise serializers.ValidationError("Admins must specify a target user.")
+            if incoming_user == request_user:
+                raise serializers.ValidationError(
+                    "Admins cannot assign games to themselves."
+                )
+
         user = attrs.get("user") or (instance.user if instance else request_user)
         if request_user.role == Roles.GAMER:
             if user != request_user:
