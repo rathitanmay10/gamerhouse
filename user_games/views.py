@@ -1,6 +1,8 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.viewsets import ModelViewSet
+from django.db import transaction
+from django.utils import timezone
 
 from core.enums import Roles
 from user_games.filters import UserGameFilter
@@ -38,6 +40,11 @@ class UserGameViewSet(ModelViewSet):
         if user.role == Roles.GAMER:
             qs = qs.filter(user=user)
         return qs
+    
+    @transaction.atomic
+    def perform_destroy(self, instance):
+        instance.notes.update(deleted_at=timezone.now())
+        return super().perform_destroy(instance)
 
 
 class UserGameNoteViewSet(ModelViewSet):
