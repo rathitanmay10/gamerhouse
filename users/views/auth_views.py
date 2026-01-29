@@ -98,7 +98,6 @@ class RegisterAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data["email"].lower()
 
-
         serializer.save()
         token = generate_email_verification_token(email)
         cache.set(verify_token_key(token), email, timeout=EMAIL_VERIFY_TTL)

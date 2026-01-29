@@ -40,7 +40,11 @@ def custom_exception_handler(exc, context):
         )
 
     if isinstance(exc, ProtectedError):
-        error_message = exc.args[0] if exc.args else "Cannot delete this resource because it is referenced by other objects."
+        error_message = (
+            exc.args[0]
+            if exc.args
+            else "Cannot delete this resource because it is referenced by other objects."
+        )
         return Response(
             {"error": error_message},
             status=status.HTTP_400_BAD_REQUEST,

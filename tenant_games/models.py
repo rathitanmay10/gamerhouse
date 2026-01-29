@@ -1,7 +1,7 @@
 from django.db import models
+from django.db.models import ProtectedError
 
 from core.models import BaseModel
-from django.db.models import ProtectedError
 
 
 class TenantGame(BaseModel):
