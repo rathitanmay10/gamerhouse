@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.context import get_correlation_id
 from core.permissions import IsAdminRole
 from payments.exceptions import (
     InvalidStateTransitionError,
@@ -42,17 +43,27 @@ class CreateOrderAPIView(APIView):
             )
 
             logger.info(
-                f"Order created successfully for tenant {tenant} by user {request.user}"
+                f"Order created successfully for tenant {tenant} by user {request.user}",
+                extra={
+                    "correlation_id": get_correlation_id(),
+                    "tenant_id": tenant.id,
+                    "user_id": request.user.id,
+                },
             )
 
             return Response(order_data, status=status.HTTP_201_CREATED)
 
         except TenantAlreadyPremiumError as e:
-            logger.warning(f"Tenant {tenant} already premium")
+            logger.warning(
+                f"Tenant {tenant} already premium",
+                extra={"correlation_id": get_correlation_id(), "tenant_id": tenant.id},
+            )
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.error(
-                f"Error creating order for tenant {tenant}: {e}", exc_info=True
+                f"Error creating order for tenant {tenant}: {e}",
+                exc_info=True,
+                extra={"correlation_id": get_correlation_id(), "tenant_id": tenant.id},
             )
             return Response(
                 {"error": "Failed to create order. Please try again."},
@@ -91,7 +102,12 @@ class VerifyPaymentAPIView(APIView):
             activate_premium_task.delay(str(payment.id))
 
             logger.info(
-                f"Payment {payment.id} verified successfully for tenant {tenant.id}"
+                f"Payment {payment.id} verified successfully for tenant {tenant.id}",
+                extra={
+                    "correlation_id": get_correlation_id(),
+                    "payment_id": str(payment.id),
+                    "tenant_id": tenant.id,
+                },
             )
 
             return Response(
@@ -103,22 +119,35 @@ class VerifyPaymentAPIView(APIView):
             )
 
         except PaymentVerificationError as e:
-            logger.error(f"Payment verification failed: {e}")
+            logger.error(
+                f"Payment verification failed: {e}",
+                extra={"correlation_id": get_correlation_id()},
+            )
             return Response(
                 {"error": "Invalid payment signature"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         except TenantMismatchError as e:
-            logger.error(f"Tenant mismatch during verification: {e}")
+            logger.error(
+                f"Tenant mismatch during verification: {e}",
+                extra={"correlation_id": get_correlation_id()},
+            )
             return Response(
                 {"error": "Payment does not belong to your tenant"},
                 status=status.HTTP_403_FORBIDDEN,
             )
         except InvalidStateTransitionError as e:
-            logger.error(f"Invalid state transition: {e}")
+            logger.error(
+                f"Invalid state transition: {e}",
+                extra={"correlation_id": get_correlation_id()},
+            )
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            logger.error(f"Error verifying payment: {e}", exc_info=True)
+            logger.error(
+                f"Error verifying payment: {e}",
+                exc_info=True,
+                extra={"correlation_id": get_correlation_id()},
+            )
             return Response(
                 {"error": "Failed to verify payment. Please contact support."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,

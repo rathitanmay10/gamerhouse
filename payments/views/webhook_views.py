@@ -6,6 +6,7 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.context import get_correlation_id
 from payments.razorpay_client import client
 from payments.services import WebhookService
 from payments.tasks import process_webhook_task
@@ -36,7 +37,10 @@ class RazorpayWebhookAPIView(APIView):
                 body.decode("utf-8"), signature, settings.RAZORPAY_WEBHOOK_SECRET
             )
         except Exception as e:
-            logger.error(f"Webhook signature verification failed: {e}")
+            logger.error(
+                f"Webhook signature verification failed: {e}",
+                extra={"correlation_id": get_correlation_id()},
+            )
             return Response({"error": "Invalid signature"}, status=200)
 
         try:
@@ -48,10 +52,19 @@ class RazorpayWebhookAPIView(APIView):
             payment_id = payment_entity.get("id", "")
             event_id = f"{event_type}_{payment_id}_{payload.get('created_at', '')}"
 
-            logger.info(f"Received webhook: {event_type}, event_id: {event_id}")
+            logger.info(
+                f"Received webhook: {event_type}, event_id: {event_id}",
+                extra={"correlation_id": get_correlation_id(), "event_id": event_id},
+            )
 
             if WebhookService.is_duplicate_event(event_id):
-                logger.info(f"Duplicate webhook event {event_id}, skipping")
+                logger.info(
+                    f"Duplicate webhook event {event_id}, skipping",
+                    extra={
+                        "correlation_id": get_correlation_id(),
+                        "event_id": event_id,
+                    },
+                )
                 return Response({"status": "duplicate"}, status=200)
             webhook_event = WebhookService.log_webhook_event(
                 event_id=event_id,
@@ -62,12 +75,28 @@ class RazorpayWebhookAPIView(APIView):
 
             if event_type in ["payment.captured", "payment.failed"]:
                 process_webhook_task.delay(payload, str(webhook_event.id))
-                logger.info(f"Queued webhook processing for event {event_id}")
+                logger.info(
+                    f"Queued webhook processing for event {event_id}",
+                    extra={
+                        "correlation_id": get_correlation_id(),
+                        "event_id": event_id,
+                    },
+                )
             else:
-                logger.info(f"Ignoring webhook event type: {event_type}")
+                logger.info(
+                    f"Ignoring webhook event type: {event_type}",
+                    extra={
+                        "correlation_id": get_correlation_id(),
+                        "event_type": event_type,
+                    },
+                )
 
             return Response({"status": "ok"}, status=200)
 
         except Exception as e:
-            logger.error(f"Error processing webhook: {e}", exc_info=True)
+            logger.error(
+                f"Error processing webhook: {e}",
+                exc_info=True,
+                extra={"correlation_id": get_correlation_id()},
+            )
             return Response({"status": "error"}, status=200)

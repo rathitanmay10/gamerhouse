@@ -4,6 +4,8 @@ from datetime import timedelta
 from celery import shared_task
 from django.utils import timezone
 
+from core.context import get_correlation_id
+
 from .constants import (
     CELERY_MAX_RETRIES,
     CELERY_RETRY_BACKOFF_BASE,
@@ -36,18 +38,35 @@ def activate_premium_task(self, payment_id: str):
         payment_id: UUID of the payment
     """
     try:
-        logger.info(f"Activating premium for payment {payment_id}")
+        logger.info(
+            f"Activating premium for payment {payment_id}",
+            extra={"correlation_id": get_correlation_id(), "payment_id": payment_id},
+        )
 
         activated = PaymentService.activate_premium(payment_id)
 
         if activated:
-            logger.info(f"Premium activated successfully for payment {payment_id}")
+            logger.info(
+                f"Premium activated successfully for payment {payment_id}",
+                extra={
+                    "correlation_id": get_correlation_id(),
+                    "payment_id": payment_id,
+                },
+            )
         else:
-            logger.info(f"Premium already activated for payment {payment_id}")
+            logger.info(
+                f"Premium already activated for payment {payment_id}",
+                extra={
+                    "correlation_id": get_correlation_id(),
+                    "payment_id": payment_id,
+                },
+            )
 
     except Exception as e:
         logger.error(
-            f"Error activating premium for payment {payment_id}: {e}", exc_info=True
+            f"Error activating premium for payment {payment_id}: {e}",
+            exc_info=True,
+            extra={"correlation_id": get_correlation_id(), "payment_id": payment_id},
         )
 
         # Retry with exponential backoff
@@ -66,7 +85,13 @@ def process_webhook_task(self, payload: dict, webhook_event_id: str):
         webhook_event_id: ID of the WebhookEvent record
     """
     try:
-        logger.info(f"Processing webhook event {webhook_event_id}")
+        logger.info(
+            f"Processing webhook event {webhook_event_id}",
+            extra={
+                "correlation_id": get_correlation_id(),
+                "webhook_event_id": webhook_event_id,
+            },
+        )
 
         # Get webhook event
         webhook_event = WebhookEvent.objects.get(id=webhook_event_id)
@@ -83,15 +108,34 @@ def process_webhook_task(self, payload: dict, webhook_event_id: str):
         elif event_type == "payment.failed":
             WebhookService.process_payment_failed(payload, webhook_event)
         else:
-            logger.info(f"Ignoring webhook event type: {event_type}")
+            logger.info(
+                f"Ignoring webhook event type: {event_type}",
+                extra={
+                    "correlation_id": get_correlation_id(),
+                    "event_type": event_type,
+                },
+            )
             webhook_event.status = WebhookEventStatus.PROCESSED
             webhook_event.processed_at = timezone.now()
             webhook_event.save()
 
     except WebhookEvent.DoesNotExist:
-        logger.error(f"WebhookEvent {webhook_event_id} not found")
+        logger.error(
+            f"WebhookEvent {webhook_event_id} not found",
+            extra={
+                "correlation_id": get_correlation_id(),
+                "webhook_event_id": webhook_event_id,
+            },
+        )
     except Exception as e:
-        logger.error(f"Error processing webhook {webhook_event_id}: {e}", exc_info=True)
+        logger.error(
+            f"Error processing webhook {webhook_event_id}: {e}",
+            exc_info=True,
+            extra={
+                "correlation_id": get_correlation_id(),
+                "webhook_event_id": webhook_event_id,
+            },
+        )
 
         # Update webhook event with error
         try:
@@ -122,7 +166,10 @@ def polling_reconcile_task():
     - Have a razorpay_payment_id (can't poll without it)
     - Haven't been updated very recently (to avoid race conditions)
     """
-    logger.info("Starting payment reconciliation polling task")
+    logger.info(
+        "Starting payment reconciliation polling task",
+        extra={"correlation_id": get_correlation_id()},
+    )
 
     # Find payments that need reconciliation
     # Exclude very recent payments (< 2 minutes old) to avoid race conditions
@@ -143,7 +190,11 @@ def polling_reconcile_task():
         # Skip if payment is too old (> 24 hours) - likely abandoned
         if payment_age_minutes > PAYMENT_ABANDON_MINUTES:
             logger.info(
-                f"Payment {payment.id} is too old ({payment_age_minutes:.0f} min), skipping"
+                f"Payment {payment.id} is too old ({payment_age_minutes:.0f} min), skipping",
+                extra={
+                    "correlation_id": get_correlation_id(),
+                    "payment_id": str(payment.id),
+                },
             )
             continue
 
@@ -169,13 +220,29 @@ def polling_reconcile_task():
 
             if updated:
                 reconciled_count += 1
-                logger.info(f"Reconciled payment {payment.id}")
+                logger.info(
+                    f"Reconciled payment {payment.id}",
+                    extra={
+                        "correlation_id": get_correlation_id(),
+                        "payment_id": str(payment.id),
+                    },
+                )
 
         except Exception as e:
-            logger.error(f"Error reconciling payment {payment.id}: {e}")
+            logger.error(
+                f"Error reconciling payment {payment.id}: {e}",
+                extra={
+                    "correlation_id": get_correlation_id(),
+                    "payment_id": str(payment.id),
+                },
+            )
             continue
 
     logger.info(
-        f"Polling reconciliation complete. Reconciled {reconciled_count} payments"
+        f"Polling reconciliation complete. Reconciled {reconciled_count} payments",
+        extra={
+            "correlation_id": get_correlation_id(),
+            "reconciled_count": reconciled_count,
+        },
     )
     return reconciled_count
