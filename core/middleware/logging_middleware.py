@@ -1,6 +1,5 @@
 import logging
 import time
-import traceback
 import uuid
 
 from django.utils.deprecation import MiddlewareMixin
@@ -41,11 +40,13 @@ class RequestResponseLoggingMiddleware(MiddlewareMixin):
             "method": request.method,
             "path": request.path,
             "ip_address": self._get_client_ip(request),
-            "user_agent": request.META.get("HTTP_USER_AGENT", ""),
             "tenant_id": tenant_id,
             "user_id": user_id,
         }
-        logger.info("Request received", extra=log_data)
+        logger.info(
+            f"Request received: {request.method} {request.path}",
+            extra=log_data,
+        )
 
         return None
 
@@ -72,12 +73,14 @@ class RequestResponseLoggingMiddleware(MiddlewareMixin):
         if hasattr(response, "content"):
             log_data["response_size"] = len(response.content)
 
+        msg = f"{request.method} {request.path} - {response.status_code}"
+
         if response.status_code >= 500:
-            logger.error("Response sent with server error", extra=log_data)
+            logger.error(f"Response sent with server error: {msg}", extra=log_data)
         elif response.status_code >= 400:
-            logger.warning("Response sent with client error", extra=log_data)
+            logger.warning(f"Response sent with client error: {msg}", extra=log_data)
         else:
-            logger.info("Response sent", extra=log_data)
+            logger.info(f"Response sent: {msg}", extra=log_data)
 
         return response
 

@@ -2,7 +2,9 @@ from functools import wraps
 
 from django.core.cache import cache
 from rest_framework.response import Response
+
 from core.constants import CACHE_RESPONSE_TTL
+
 
 def drf_cache_response(prefix: str, ttl: int = CACHE_RESPONSE_TTL):
     """
