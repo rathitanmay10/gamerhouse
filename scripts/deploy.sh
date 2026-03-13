@@ -13,6 +13,8 @@ APP_DIR="/opt/gamerhouse"
 BRANCH="${DEPLOY_BRANCH:-dev}"
 DOMAIN="${DOMAIN:-gamerhouse.isroot.in}"
 IMAGE_NAME="${IMAGE_NAME:-ghcr.io/tanmayrathi-gkmit/gamerhouse:latest}"
+NEW_RELIC_LICENSE_KEY="${NEW_RELIC_LICENSE_KEY:-}"
+NEW_RELIC_APP_NAME="${NEW_RELIC_APP_NAME:-GamerHouse-Prod}"
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  GamerHouse Deploy — $(date '+%Y-%m-%d %H:%M:%S')"
@@ -57,6 +59,42 @@ if ! docker compose version &>/dev/null 2>&1; then
   echo "✅  Docker Compose plugin installed."
 else
   echo "ℹ️   Docker Compose plugin already installed — skipping."
+fi
+
+# New Relic Infrastructure Agent
+if ! command -v newrelic-infra &>/dev/null; then
+  echo "⏳  Installing New Relic Infrastructure Agent …"
+  # Add New Relic GPG key and repo
+  curl -fsSL https://download.newrelic.com/infrastructure_agent/gpg/newrelic-infra.gpg | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/newrelic-infra.gpg
+  echo "deb [arch=amd64] https://download.newrelic.com/infrastructure_agent/linux/apt/ $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/newrelic-infra.list
+  
+  sudo apt-get update -q
+  sudo apt-get install newrelic-infra -y -q
+  
+  # Configure License Key
+  echo "license_key: ${NEW_RELIC_LICENSE_KEY}" | sudo tee /etc/newrelic-infra.yml > /dev/null
+  sudo systemctl enable newrelic-infra
+  sudo systemctl start newrelic-infra
+  echo "✅  New Relic Infrastructure Agent installed."
+else
+  echo "ℹ️   New Relic Infrastructure Agent already installed — skipping."
+fi
+
+# Configure Log Forwarding
+LOG_CONF="/etc/newrelic-infra/logging.d/gamerhouse.yml"
+if [ ! -f "$LOG_CONF" ]; then
+  echo "⏳  Configuring New Relic Log Forwarding …"
+  sudo mkdir -p /etc/newrelic-infra/logging.d/
+  cat <<EOF | sudo tee "$LOG_CONF" > /dev/null
+logs:
+  - name: gamerhouse-app
+    file: /opt/gamerhouse/logs/application.log
+    attributes:
+      service: gamerhouse-web
+      environment: production
+EOF
+  sudo systemctl restart newrelic-infra
+  echo "✅  Log forwarding configured."
 fi
 
 # ── 2. Clone repo or pull latest ─────────────────────────────────────────────
