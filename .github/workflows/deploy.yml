@@ -1,0 +1,106 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# GamerHouse — CI/CD Pipeline
+#
+# Triggers: push to `dev` branch  |  PR merged into `dev`
+# Steps:    build image → push GHCR → SSH into EC2 → bootstrap + deploy
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [dev]
+  pull_request:
+    types: [closed]
+    branches: [dev]
+  workflow_dispatch:   # ← manual trigger from ANY branch via GitHub Actions UI
+
+# Cancel any in-flight run for the same branch so we never deploy stale code
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ghcr.io/tanmayrathi-gkmit/gamerhouse
+
+jobs:
+  build-and-deploy:
+    # For PRs, only run if the PR was actually merged (not just closed)
+    if: github.event_name == 'push' || github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write   # needed to push to GHCR
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Login to GHCR ─────────────────────────────────────────────────────
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── 3. Build metadata (tags + labels) ────────────────────────────────────
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=sha-
+            type=raw,value=latest
+
+      # ── 4. Set up Docker Buildx ───────────────────────────────────────────────
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # ── 5. Build & push image to GHCR ────────────────────────────────────────
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:latest
+          cache-to: type=inline
+
+      # ── 6. Deploy to EC2 via SSH ─────────────────────────────────────────────
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          timeout: 300s
+          script: |
+            # Pass all secrets as env vars; deploy.sh reads them to write .env
+            export DJANGO_SECRET_KEY="${{ secrets.DJANGO_SECRET_KEY }}"
+            export POSTGRES_NAME="${{ secrets.POSTGRES_NAME }}"
+            export POSTGRES_USER="${{ secrets.POSTGRES_USER }}"
+            export POSTGRES_PASSWORD="${{ secrets.POSTGRES_PASSWORD }}"
+            export CELERY_BROKER_URL="redis://redis:6379/0"
+            export CELERY_RESULT_BACKEND="redis://redis:6379/2"
+            export REDIS_CACHE_URL="redis://redis:6379/1"
+            export EMAIL_HOST="${{ secrets.EMAIL_HOST }}"
+            export EMAIL_PORT="${{ secrets.EMAIL_PORT }}"
+            export EMAIL_HOST_USER="${{ secrets.EMAIL_HOST_USER }}"
+            export EMAIL_HOST_PASSWORD="${{ secrets.EMAIL_HOST_PASSWORD }}"
+            export DEFAULT_FROM_EMAIL="${{ secrets.DEFAULT_FROM_EMAIL }}"
+            export RAZORPAY_KEY_ID="${{ secrets.RAZORPAY_KEY_ID }}"
+            export RAZORPAY_KEY_SECRET="${{ secrets.RAZORPAY_KEY_SECRET }}"
+            export RAZORPAY_WEBHOOK_SECRET="${{ secrets.RAZORPAY_WEBHOOK_SECRET }}"
+            export FRONTEND_URL="${{ secrets.FRONTEND_URL }}"
+            export ALLOWED_HOSTS="gamerhouse.isroot.in,localhost,127.0.0.1"
+            export DOMAIN="gamerhouse.isroot.in"
+            export GHCR_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+            export GHCR_USER="${{ github.actor }}"
+            export IMAGE_NAME="${{ env.IMAGE_NAME }}"
+
+            bash /opt/gamerhouse/scripts/deploy.sh

@@ -54,8 +54,8 @@ services:
     ports:
       - "8000:8000"           # expose to host; Nginx on host proxies here
     volumes:
-      - static_volume:/app/staticfiles
-      - ./logs:/app.logs      # persist Django logs
+      - /opt/gamerhouse/staticfiles:/app/staticfiles   # bind-mount so host Nginx can serve /static/
+      - ./logs:/app/logs      # persist Django logs
     depends_on:
       postgres:
         condition: service_healthy
@@ -133,5 +133,4 @@ services:
 # ─────────────────────────────────────────────────────────────────────────────
 volumes:
   postgres_data:
-  static_volume:
   celerybeat_data:
