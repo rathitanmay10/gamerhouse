@@ -227,6 +227,14 @@ else
   echo "ℹ️   SSL certificate already present — skipping certbot."
 fi
 
+# ── 9. Reset fluent-bit log offset DB ────────────────────────────────────────
+echo "⏳  Resetting fluent-bit offset DB …"
+sudo rm -f /var/db/newrelic-infra/newrelic-integrations/logging/fb.db
+sudo rm -f /var/db/newrelic-infra/newrelic-integrations/logging/fb.db-shm
+sudo rm -f /var/db/newrelic-infra/newrelic-integrations/logging/fb.db-wal
+sudo systemctl restart newrelic-infra
+echo "✅  New Relic log forwarder reset."
+
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  ✅  Deploy complete!"
