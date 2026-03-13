@@ -73,13 +73,29 @@ if ! command -v newrelic-infra &>/dev/null; then
   
 fi
 
-# Update New Relic Infrastructure Config (ensure license key is current)
+# Update New Relic Infrastructure Config
 echo "⏳  Updating New Relic configuration …"
 cat <<EOF | sudo tee /etc/newrelic-infra.yml > /dev/null
 license_key: ${NEW_RELIC_LICENSE_KEY}
 log_format: json
+passthrough_environment:
+  - NR_LICENSE_KEY_ENV_VAR
+  - NEW_RELIC_LICENSE_KEY
+  - NRIA_LICENSE_KEY
 EOF
 echo "✅  New Relic configuration updated."
+
+# ── Ensure log forwarder can resolve the license key ─────────────────────────
+echo "⏳  Updating New Relic systemd environment overrides …"
+sudo mkdir -p /etc/systemd/system/newrelic-infra.service.d/
+cat <<EOF | sudo tee /etc/systemd/system/newrelic-infra.service.d/override.conf > /dev/null
+[Service]
+Environment="NR_LICENSE_KEY_ENV_VAR=${NEW_RELIC_LICENSE_KEY}"
+Environment="NRIA_LICENSE_KEY=${NEW_RELIC_LICENSE_KEY}"
+Environment="NEW_RELIC_LICENSE_KEY=${NEW_RELIC_LICENSE_KEY}"
+EOF
+sudo systemctl daemon-reload
+echo "✅  New Relic systemd overrides updated."
 
 # Configure Log Forwarding
 LOG_CONF="/etc/newrelic-infra/logging.d/gamerhouse.yml"
@@ -94,7 +110,6 @@ logs:
       service: gamerhouse-web
       environment: production
 EOF
-  sudo systemctl restart newrelic-infra
   echo "✅  Log forwarding configured."
 fi
 
