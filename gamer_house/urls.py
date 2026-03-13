@@ -1,10 +1,12 @@
 from django.contrib import admin
 from django.urls import include, path
 
+from core.views import HealthCheckView
 from payments.views.views_ui import payment_callback
 from users.views import ResetPasswordPageView
 
 urlpatterns = [
+    path("health/", HealthCheckView.as_view(), name="health-check"),
     path("admin/", admin.site.urls),
     path(
         "reset-password/", ResetPasswordPageView.as_view(), name="reset-password-page"
