@@ -26,13 +26,15 @@ install_if_missing() {
   local pkg=${2:-$1}
   if ! command -v "$cmd" &>/dev/null; then
     echo "⏳  Installing $pkg …"
-    sudo apt-get update -q
     sudo apt-get install -y -q "$pkg"
     echo "✅  $pkg installed."
   else
     echo "ℹ️   $cmd already installed — skipping."
   fi
 }
+
+echo "⏳  Updating package repositories …"
+sudo apt-get update -q
 
 install_if_missing git git
 install_if_missing nginx nginx
@@ -70,7 +72,6 @@ if ! command -v newrelic-infra &>/dev/null; then
   
   sudo apt-get update -q
   sudo apt-get install newrelic-infra -y -q
-  
 fi
 
 # Update New Relic Infrastructure Config
@@ -80,8 +81,6 @@ license_key: ${NEW_RELIC_LICENSE_KEY}
 log_format: json
 passthrough_environment:
   - NR_LICENSE_KEY_ENV_VAR
-  - NEW_RELIC_LICENSE_KEY
-  - NRIA_LICENSE_KEY
 EOF
 echo "✅  New Relic configuration updated."
 
@@ -91,8 +90,6 @@ sudo mkdir -p /etc/systemd/system/newrelic-infra.service.d/
 cat <<EOF | sudo tee /etc/systemd/system/newrelic-infra.service.d/override.conf > /dev/null
 [Service]
 Environment="NR_LICENSE_KEY_ENV_VAR=${NEW_RELIC_LICENSE_KEY}"
-Environment="NRIA_LICENSE_KEY=${NEW_RELIC_LICENSE_KEY}"
-Environment="NEW_RELIC_LICENSE_KEY=${NEW_RELIC_LICENSE_KEY}"
 EOF
 sudo systemctl daemon-reload
 echo "✅  New Relic systemd overrides updated."
@@ -112,6 +109,11 @@ logs:
 EOF
   echo "✅  Log forwarding configured."
 fi
+
+# Always restart to pick up latest license key and YAML config
+echo "⏳  Restarting New Relic agent …"
+sudo systemctl restart newrelic-infra
+echo "✅  New Relic agent restarted."
 
 
 # ── 2. Clone repo or pull latest ─────────────────────────────────────────────
@@ -189,6 +191,11 @@ docker pull "$IMAGE_NAME"
 docker tag "$IMAGE_NAME" gamerhouse_web:latest
 echo "✅  Image pulled and tagged."
 
+# Cleanup old images to save disk space
+echo "⏳  Cleaning up old Docker images …"
+docker image prune -f --filter "until=24h"
+echo "✅  Docker cleanup complete."
+
 # ── 5. Start / restart Docker Compose stack ──────────────────────────────────
 echo "⏳  Starting Docker Compose stack …"
 docker compose -f "$APP_DIR/docker-compose.yml" up -d --remove-orphans
@@ -209,16 +216,16 @@ until curl -sf "http://localhost:8000/health/" > /dev/null; do
 done
 echo "✅  App is healthy."
 
-# ── 7. Configure Nginx (first run only) ──────────────────────────────────────
+# ── 7. Configure Nginx ───────────────────────────────────────────────────────
 NGINX_CONF="/etc/nginx/sites-available/gamerhouse"
 NGINX_LINK="/etc/nginx/sites-enabled/gamerhouse"
 
 if [ ! -f "$NGINX_CONF" ]; then
   echo "⏳  Installing Nginx config …"
-  sudo cp "$APP_DIR/nginx/gamerhouse.conf" "$NGINX_CONF"
-  sudo sed -i "s/__DOMAIN__/$DOMAIN/g" "$NGINX_CONF"
-  sudo ln -sf "$NGINX_CONF" "$NGINX_LINK"
-  sudo nginx -t && sudo systemctl reload nginx
+sudo cp "$APP_DIR/nginx/gamerhouse.conf" "$NGINX_CONF"
+sudo sed -i "s/__DOMAIN__/$DOMAIN/g" "$NGINX_CONF"
+sudo ln -sf "$NGINX_CONF" "$NGINX_LINK"
+sudo nginx -t && sudo systemctl reload nginx
   echo "✅  Nginx configured."
 else
   echo "ℹ️   Nginx config already present — skipping."
@@ -243,14 +250,6 @@ if [ ! -f "$CERT_PATH" ]; then
 else
   echo "ℹ️   SSL certificate already present — skipping certbot."
 fi
-
-# ── 9. Reset fluent-bit log offset DB ────────────────────────────────────────
-echo "⏳  Resetting fluent-bit offset DB …"
-sudo rm -f /var/db/newrelic-infra/newrelic-integrations/logging/fb.db
-sudo rm -f /var/db/newrelic-infra/newrelic-integrations/logging/fb.db-shm
-sudo rm -f /var/db/newrelic-infra/newrelic-integrations/logging/fb.db-wal
-sudo systemctl restart newrelic-infra
-echo "✅  New Relic log forwarder reset."
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
