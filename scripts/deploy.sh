@@ -10,7 +10,7 @@ set -euo pipefail
 
 REPO_URL="https://github.com/tanmayrathi-gkmit/gamerhouse.git"
 APP_DIR="/opt/gamerhouse"
-BRANCH="dev"
+BRANCH="${DEPLOY_BRANCH:-dev}"
 DOMAIN="${DOMAIN:-gamerhouse.isroot.in}"
 IMAGE_NAME="${IMAGE_NAME:-ghcr.io/tanmayrathi-gkmit/gamerhouse:latest}"
 

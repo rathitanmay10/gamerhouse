@@ -78,7 +78,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          timeout: 300s
+          timeout: 600s
           script: |
             # Set up target directory if it doesn't exist
             sudo mkdir -p /opt/gamerhouse
@@ -86,15 +86,16 @@ jobs:
 
             # Clone repo if missing, otherwise pull latest
             if [ ! -d "/opt/gamerhouse/.git" ]; then
-              git clone --branch ci-test https://github.com/tanmayrathi-gkmit/gamerhouse.git /opt/gamerhouse
+              git clone --branch ${{ github.ref_name }} https://github.com/tanmayrathi-gkmit/gamerhouse.git /opt/gamerhouse
             fi
 
             cd /opt/gamerhouse
             git fetch origin
-            git checkout ci-test
-            git pull origin ci-test
+            git checkout ${{ github.ref_name }}
+            git pull origin ${{ github.ref_name }}
 
             # Inject secrets as env vars for the deploy script
+            export DEPLOY_BRANCH="${{ github.ref_name }}"
             export DJANGO_SECRET_KEY="${{ secrets.DJANGO_SECRET_KEY }}"
             export POSTGRES_NAME="${{ secrets.POSTGRES_NAME }}"
             export POSTGRES_USER="${{ secrets.POSTGRES_USER }}"
