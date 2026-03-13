@@ -97,6 +97,16 @@ EOF
   echo "✅  Log forwarding configured."
 fi
 
+# ── Ensure fluent-bit license key env var is always current ──────────────────
+echo "⏳  Updating New Relic systemd override …"
+sudo mkdir -p /etc/systemd/system/newrelic-infra.service.d/
+cat <<EOF | sudo tee /etc/systemd/system/newrelic-infra.service.d/override.conf > /dev/null
+[Service]
+Environment="NR_LICENSE_KEY_ENV_VAR=${NEW_RELIC_LICENSE_KEY}"
+EOF
+sudo systemctl daemon-reload
+echo "✅  New Relic systemd override updated."
+
 # ── 2. Clone repo or pull latest ─────────────────────────────────────────────
 if [ ! -d "$APP_DIR/.git" ]; then
   echo "⏳  Cloning repository …"
