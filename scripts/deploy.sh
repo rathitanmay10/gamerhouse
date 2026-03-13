@@ -71,14 +71,15 @@ if ! command -v newrelic-infra &>/dev/null; then
   sudo apt-get update -q
   sudo apt-get install newrelic-infra -y -q
   
-  # Configure License Key
-  echo "license_key: ${NEW_RELIC_LICENSE_KEY}" | sudo tee /etc/newrelic-infra.yml > /dev/null
-  sudo systemctl enable newrelic-infra
-  sudo systemctl start newrelic-infra
-  echo "✅  New Relic Infrastructure Agent installed."
-else
-  echo "ℹ️   New Relic Infrastructure Agent already installed — skipping."
 fi
+
+# Update New Relic Infrastructure Config (ensure license key is current)
+echo "⏳  Updating New Relic configuration …"
+cat <<EOF | sudo tee /etc/newrelic-infra.yml > /dev/null
+license_key: ${NEW_RELIC_LICENSE_KEY}
+log_format: json
+EOF
+echo "✅  New Relic configuration updated."
 
 # Configure Log Forwarding
 LOG_CONF="/etc/newrelic-infra/logging.d/gamerhouse.yml"
@@ -97,15 +98,6 @@ EOF
   echo "✅  Log forwarding configured."
 fi
 
-# ── Ensure fluent-bit license key env var is always current ──────────────────
-echo "⏳  Updating New Relic systemd override …"
-sudo mkdir -p /etc/systemd/system/newrelic-infra.service.d/
-cat <<EOF | sudo tee /etc/systemd/system/newrelic-infra.service.d/override.conf > /dev/null
-[Service]
-Environment="NR_LICENSE_KEY_ENV_VAR=${NEW_RELIC_LICENSE_KEY}"
-EOF
-sudo systemctl daemon-reload
-echo "✅  New Relic systemd override updated."
 
 # ── 2. Clone repo or pull latest ─────────────────────────────────────────────
 if [ ! -d "$APP_DIR/.git" ]; then
