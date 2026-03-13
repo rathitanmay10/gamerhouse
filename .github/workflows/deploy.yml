@@ -117,5 +117,7 @@ jobs:
             export GHCR_TOKEN="${{ secrets.GITHUB_TOKEN }}"
             export GHCR_USER="${{ github.actor }}"
             export IMAGE_NAME="${{ env.IMAGE_NAME }}"
+            export NEW_RELIC_LICENSE_KEY="${{ secrets.NEW_RELIC_LICENSE_KEY }}"
+            export NEW_RELIC_APP_NAME="GamerHouse-Prod"
 
             bash scripts/deploy.sh
