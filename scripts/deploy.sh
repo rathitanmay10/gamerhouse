@@ -173,11 +173,12 @@ if [ ! -f "$CERT_PATH" ]; then
     --redirect
   echo "✅  SSL certificate obtained."
 
-  # Set up auto-renew cron (runs twice daily)
-  # We check if it already exists to avoid duplicates if the script is re-run
-  (sudo crontab -l 2>/dev/null | grep -F "certbot renew" >/dev/null) || \
-  (sudo crontab -l 2>/dev/null; echo "0 3 * * * certbot renew --quiet --post-hook 'systemctl reload nginx'") | sudo crontab -
-  echo "✅  Auto-renew cron configured."
+  if ! sudo crontab -l 2>/dev/null | grep -qF "certbot renew"; then
+    (sudo crontab -l 2>/dev/null; echo "0 3 * * * certbot renew --quiet --post-hook 'systemctl reload nginx'") | sudo crontab -
+    echo "✅  Auto-renew cron configured."
+  else
+    echo "ℹ️   Auto-renew cron already present — skipping."
+  fi
 else
   echo "ℹ️   SSL certificate already present — skipping certbot."
 fi
