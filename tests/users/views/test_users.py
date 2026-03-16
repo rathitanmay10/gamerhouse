@@ -1,6 +1,7 @@
 import pytest
 from django.urls import reverse
 from rest_framework import status
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from core.enums import Roles
 from tests.factories.tenants import TenantFactory
@@ -144,6 +145,19 @@ class TestMeAPIView:
         assert response.status_code == status.HTTP_200_OK
         user.refresh_from_db()
         assert user.first_name == "NewName"
+
+    def test_user_can_delete_self(self, authenticated_client, user, mocker):
+        mocker.patch("users.views.user_views.soft_delete_user_data.delay")
+
+        refresh = RefreshToken.for_user(user)
+        data = {"refresh": str(refresh)}
+
+        response = authenticated_client.delete(self.url, data=data)
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+        user.refresh_from_db()
+        assert user.deleted_at is not None
+        assert user.is_active is False
 
 
 class TestChangePasswordAPIView:

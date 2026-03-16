@@ -88,6 +88,20 @@ class TestRegistration:
         user.refresh_from_db()
         assert user.is_verified is True
 
+    def test_resend_verification_email_success(
+        self, api_client, user, mock_auth_dependencies
+    ):
+        user.is_verified = False
+        user.save()
+
+        url = reverse("resend-verification")
+        data = {"email": user.email}
+        response = api_client.post(url, data=data)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert "Verification mail sent" in response.data["message"]
+        assert mock_auth_dependencies.set.called
+
 
 class TestLoginFlow:
     login_url = reverse("login")
