@@ -114,9 +114,9 @@ jobs:
             export FRONTEND_URL="${{ secrets.FRONTEND_URL }}"
             export ALLOWED_HOSTS="gamerhouse.isroot.in,localhost,127.0.0.1"
             export DOMAIN="gamerhouse.isroot.in"
-            export GHCR_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+            export GHCR_TOKEN="${{ secrets.GHCR_PAT }}"
             export GHCR_USER="${{ github.actor }}"
-            export IMAGE_NAME="${{ env.IMAGE_NAME }}"
+            export IMAGE_NAME="${{ env.IMAGE_NAME }}:latest"
             export NEW_RELIC_LICENSE_KEY="${{ secrets.NEW_RELIC_LICENSE_KEY }}"
             export NEW_RELIC_APP_NAME="GamerHouse-Prod"
 
