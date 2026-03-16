@@ -3,8 +3,8 @@ from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from core.enums import Roles
-from tests.factories.users import UserFactory
 from tests.factories.tenants import TenantFactory
+from tests.factories.users import UserFactory
 
 
 @pytest.fixture(autouse=True)

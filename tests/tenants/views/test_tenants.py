@@ -1,4 +1,3 @@
-import pytest
 from django.urls import reverse
 from rest_framework import status
 
@@ -87,7 +86,7 @@ class TestTenantViewSet:
         # Own tenant
         response = admin_client.patch(self.detail_url(admin_user.tenant.id), data=data)
         assert response.status_code == status.HTTP_403_FORBIDDEN
-        
+
         # Other tenant
         other_tenant = TenantFactory()
         response = admin_client.patch(self.detail_url(other_tenant.id), data=data)
@@ -104,6 +103,6 @@ class TestTenantViewSet:
         """Verify anonymous user is blocked."""
         response = api_client.get(self.list_url)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
-        
+
         response = api_client.get(self.detail_url(tenant.id))
         assert response.status_code == status.HTTP_401_UNAUTHORIZED

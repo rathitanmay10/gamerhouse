@@ -1,6 +1,7 @@
 import factory
-from tenants.models import Tenant
+
 from core.enums import TenantStatus
+from tenants.models import Tenant
 
 
 class TenantFactory(factory.django.DjangoModelFactory):
