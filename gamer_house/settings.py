@@ -36,9 +36,11 @@ INSTALLED_APPS = [
     "tenants",
     "tenant_games",
     "payments",
+    "silk",
 ]
 
 MIDDLEWARE = [
+    "silk.middleware.SilkyMiddleware",
     # "pyinstrument.middleware.ProfilerMiddleware",
     "core.middleware.JsonErrorMiddleware",
     "django.middleware.security.SecurityMiddleware",
@@ -173,3 +175,7 @@ LOGGING = get_logging_config()
 RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID")
 RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET")
 RAZORPAY_WEBHOOK_SECRET = os.getenv("RAZORPAY_WEBHOOK_SECRET")
+
+SILKY_PYTHON_PROFILER = True
+SILKY_PYTHON_PROFILER_BINARY = True
+SILKY_INTERCEPT_PERCENT = 100
