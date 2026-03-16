@@ -54,9 +54,10 @@ def get_auth_headers():
 
 
 @pytest.fixture
-def authenticated_client(api_client, user, get_auth_headers):
-    api_client.credentials(**get_auth_headers(user))
-    return api_client
+def authenticated_client(user, get_auth_headers):
+    client = APIClient()
+    client.credentials(**get_auth_headers(user))
+    return client
 
 
 @pytest.fixture
@@ -65,10 +66,10 @@ def admin_user(tenant):
 
 
 @pytest.fixture
-def admin_client(api_client, admin_user, get_auth_headers):
-    api_client.credentials(**get_auth_headers(admin_user))
-    api_client.raise_request_exception = True
-    return api_client
+def admin_client(admin_user, get_auth_headers):
+    client = APIClient()
+    client.credentials(**get_auth_headers(admin_user))
+    return client
 
 
 @pytest.fixture
@@ -77,6 +78,7 @@ def superadmin_user(tenant):
 
 
 @pytest.fixture
-def superadmin_client(api_client, superadmin_user, get_auth_headers):
-    api_client.credentials(**get_auth_headers(superadmin_user))
-    return api_client
+def superadmin_client(superadmin_user, get_auth_headers):
+    client = APIClient()
+    client.credentials(**get_auth_headers(superadmin_user))
+    return client

@@ -2,7 +2,6 @@ import pytest
 from django.urls import reverse
 from rest_framework import status
 
-from core.enums import Roles
 from tests.factories.catalog import GameFactory
 from tests.factories.tenant_games import TenantGameFactory
 
