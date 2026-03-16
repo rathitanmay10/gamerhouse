@@ -1,10 +1,11 @@
 import factory
-from user_games.models import UserGame, UserGameNote
+
 from core.enums import Status
-from tests.factories.users import UserFactory
-from tests.factories.tenant_games import TenantGameFactory
 from tests.factories.catalog import PlatformFactory
+from tests.factories.tenant_games import TenantGameFactory
 from tests.factories.tenants import TenantFactory
+from tests.factories.users import UserFactory
+from user_games.models import UserGame, UserGameNote
 
 
 class UserGameFactory(factory.django.DjangoModelFactory):

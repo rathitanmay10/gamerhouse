@@ -1,8 +1,9 @@
 import factory
+
+from payments.enums import PaymentStatus, SubscriptionStatus, WebhookEventStatus
 from payments.models.payment_models import Payment
 from payments.models.subscription_models import Subscription
 from payments.models.webhook_models import WebhookEvent
-from payments.enums import PaymentStatus, SubscriptionStatus, WebhookEventStatus
 from tests.factories.tenants import TenantFactory
 from tests.factories.users import UserFactory
 

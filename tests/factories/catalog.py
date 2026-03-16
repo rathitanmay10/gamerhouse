@@ -1,4 +1,5 @@
 import factory
+
 from catalog.models.game_models import Game
 from catalog.models.genre_models import Genre
 from catalog.models.platform_models import Platform
@@ -21,6 +22,7 @@ class PlatformFactory(factory.django.DjangoModelFactory):
 class GameFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Game
+        skip_postgeneration_save = True
 
     title = factory.Sequence(lambda n: f"Game {n}")
     description = factory.Faker("text")

@@ -8,6 +8,20 @@ from tests.factories.users import UserFactory
 
 
 @pytest.fixture(autouse=True)
+def clear_context_vars():
+    """
+    Clears context variables between tests to prevent leaks.
+    """
+    from core.context import correlation_id_var, current_tenant
+
+    current_tenant.set(None)
+    correlation_id_var.set(None)
+    yield
+    current_tenant.set(None)
+    correlation_id_var.set(None)
+
+
+@pytest.fixture(autouse=True)
 def enable_db_access_for_all_tests(db):
     """
     Globally enables database access for all tests.
@@ -53,6 +67,7 @@ def admin_user(tenant):
 @pytest.fixture
 def admin_client(api_client, admin_user, get_auth_headers):
     api_client.credentials(**get_auth_headers(admin_user))
+    api_client.raise_request_exception = True
     return api_client
 
 
