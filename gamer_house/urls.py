@@ -18,5 +18,5 @@ urlpatterns = [
     path("api/v1/", include("tenants.urls")),
     path("api/v1/", include("tenant_games.urls")),
     path("api/v1/", include("payments.urls")),
-    path("silk/", include("silk.urls", namespace="silk")),
+    # path("silk/", include("silk.urls", namespace="silk")),
 ]
