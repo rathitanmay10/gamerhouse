@@ -223,6 +223,7 @@ logs/
 
 # Load Testing
 core/management/commands/generate_load_test_tokens.py
+core/management/commands/delete_load_test_genres.py
 locustfile.py
 load_test_tokens.json
 
