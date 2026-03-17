@@ -4,7 +4,6 @@ from django.db.models import ProtectedError
 from catalog.models import Game, Genre, Platform
 
 
-@pytest.mark.django_db
 class TestGenreModel:
     def test_genre_creation(self):
         genre = Genre.objects.create(name="Action RPG")

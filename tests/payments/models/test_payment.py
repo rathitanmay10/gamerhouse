@@ -16,7 +16,6 @@ def payment_test_data(db):
     return {"tenant": tenant, "admin": admin_user}
 
 
-@pytest.mark.django_db
 class TestPaymentModel:
     def test_payment_creation(self, payment_test_data):
         """Payment is created with default status."""

@@ -1,9 +1,6 @@
-import pytest
-
 from catalog.models import Game, Genre, Platform
 
 
-@pytest.mark.django_db
 class TestGameModel:
     def test_game_creation(self):
         genre = Genre.objects.create(name="Adventure")

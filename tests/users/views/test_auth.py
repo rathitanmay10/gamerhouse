@@ -31,6 +31,12 @@ def mock_auth_dependencies(mocker):
 class TestRegistration:
     url = reverse("tenant-register")
 
+    def test_user_registration_no_email(self, api_client, tenant):
+        data = {"username": "newgamer", "password": "Password123!"}
+        headers = {"HTTP_X_TENANT_ID": str(tenant.id)}
+        response = api_client.post(self.url, data=data, **headers)
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
     def test_user_registration_success(
         self, api_client, tenant, mock_auth_dependencies
     ):
@@ -66,6 +72,30 @@ class TestRegistration:
         assert response.status_code == status.HTTP_200_OK
         assert "already sent" in response.data["message"]
 
+    def test_user_registration_password_mismatch(self, api_client, tenant):
+        data = {
+            "username": "newgamer",
+            "email": "gamer@example.com",
+            "password": "Password123!",
+            "confirm_password": "Password321!",
+        }
+        headers = {"HTTP_X_TENANT_ID": str(tenant.id)}
+        response = api_client.post(self.url, data=data, **headers)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_user_registration_existing_verified_user(self, api_client, tenant, user):
+        data = {
+            "username": "another_user",
+            "email": user.email,
+            "password": "Password123!",
+            "confirm_password": "Password123!",
+        }
+        headers = {"HTTP_X_TENANT_ID": str(tenant.id)}
+        response = api_client.post(self.url, data=data, **headers)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
     def test_user_registration_missing_tenant_header(self, api_client):
         data = {
             "username": "fail",
@@ -78,6 +108,8 @@ class TestRegistration:
         assert "Tenant header missing" in str(response.data)
 
     def test_verify_email_success(self, api_client, user, mock_auth_dependencies):
+        user.is_verified = False
+        user.save()
         token = "valid_token"
         mock_auth_dependencies.get.return_value = user.email
 
@@ -87,6 +119,30 @@ class TestRegistration:
         assert response.status_code == status.HTTP_200_OK
         user.refresh_from_db()
         assert user.is_verified is True
+
+    def test_verify_email_user_not_found(self, api_client, mock_auth_dependencies):
+        token = "valid_token"
+        mock_auth_dependencies.get.return_value = "nonexistent@example.com"
+
+        url = reverse("verify-email")
+        response = api_client.get(f"{url}?token={token}")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "User does not exist" in str(response.data)
+
+    def test_verify_email_missing_token(self, api_client):
+        url = reverse("verify-email")
+        response = api_client.get(url)
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_verify_email_invalid_token(self, api_client, mock_auth_dependencies):
+        token = "invalid_token"
+        mock_auth_dependencies.get.return_value = None
+
+        url = reverse("verify-email")
+        response = api_client.get(f"{url}?token={token}")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_resend_verification_email_success(
         self, api_client, user, mock_auth_dependencies
@@ -101,6 +157,42 @@ class TestRegistration:
         assert response.status_code == status.HTTP_200_OK
         assert "Verification mail sent" in response.data["message"]
         assert mock_auth_dependencies.set.called
+
+    def test_resend_verification_already_verified(
+        self, api_client, user, mock_auth_dependencies
+    ):
+        user.is_verified = True
+        user.save()
+
+        url = reverse("resend-verification")
+        data = {"email": user.email}
+        response = api_client.post(url, data=data)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert not mock_auth_dependencies.set.called
+
+    def test_resend_verification_no_email(self, api_client):
+        url = reverse("resend-verification")
+        response = api_client.post(url, data={})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        # The structure is {'error': {'email': [...]}} based on failing test output
+        assert "email" in str(response.data)
+
+    def test_resend_verification_already_sent_cache(
+        self, api_client, user, mock_auth_dependencies
+    ):
+        user.is_verified = False
+        user.save()
+
+        mock_auth_dependencies.get.return_value = "existing_token"
+
+        url = reverse("resend-verification")
+        data = {"email": user.email}
+        response = api_client.post(url, data=data)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert "already sent" in str(response.data)
+        assert not mock_auth_dependencies.set.called
 
 
 class TestLoginFlow:
@@ -118,6 +210,28 @@ class TestLoginFlow:
         assert "OTP sent" in response.data["message"]
         assert mock_auth_dependencies.set.called
 
+    def test_login_unverified_user(self, api_client, user):
+        user.is_verified = False
+        user.save()
+
+        data = {"email": user.email, "password": "password"}
+        response = api_client.post(self.login_url, data=data)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "not verified" in str(response.data).lower()
+
+    def test_login_otp_already_sent(self, api_client, user, mock_auth_dependencies):
+        user.is_verified = True
+        user.save()
+
+        mock_auth_dependencies.get.return_value = "cached_otp"
+
+        data = {"email": user.email, "password": "password"}
+        response = api_client.post(self.login_url, data=data)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert not mock_auth_dependencies.set.called
+
     def test_login_step_2_verify_otp_success(self, api_client, user, mocker):
         user.is_verified = True
         user.save()
@@ -132,6 +246,22 @@ class TestLoginFlow:
         assert "access" in response.data
         assert "refresh" in response.data
 
+    def test_verify_otp_missing_fields(self, api_client):
+        data = {"email": "test@example.com"}
+        response = api_client.post(self.verify_url, data=data)
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_verify_otp_expired(self, api_client, user, mock_auth_dependencies):
+        user.is_verified = True
+        user.save()
+
+        mock_auth_dependencies.get.return_value = None
+
+        data = {"email": user.email, "otp": "123456"}
+        response = api_client.post(self.verify_url, data=data)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
     def test_login_step_2_invalid_otp(self, api_client, user, mocker):
         user.is_verified = True
         user.save()
@@ -144,6 +274,30 @@ class TestLoginFlow:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "Invalid OTP" in str(response.data)
 
+    def test_verify_otp_user_not_found(self, api_client, user, mock_auth_dependencies):
+        mock_auth_dependencies.get.return_value = "hashed_otp"
+
+        data = {"email": "nonexistent@example.com", "otp": "123456"}
+        response = api_client.post(self.verify_url, data=data)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "Authentication failed" in str(response.data)
+
+    def test_verify_otp_max_attempts(
+        self, api_client, user, mocker, mock_auth_dependencies
+    ):
+        user.is_verified = True
+        user.save()
+
+        mock_auth_dependencies.get.return_value = 5
+
+        data = {"email": user.email, "otp": "any"}
+
+        response = api_client.post(self.verify_url, data=data)
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "Too many invalid attempts" in str(response.data)
+        assert mock_auth_dependencies.delete_many.called
+
 
 class TestPasswordReset:
     forgot_url = reverse("forgot-password")
@@ -155,6 +309,24 @@ class TestPasswordReset:
         assert response.status_code == status.HTTP_200_OK
         assert "reset link has been sent" in response.data["message"]
         assert mock_auth_dependencies.set.called
+
+    def test_forgot_password_existing_token(
+        self, api_client, user, mock_auth_dependencies
+    ):
+        mock_auth_dependencies.get.return_value = "some_token"
+        data = {"email": user.email}
+        response = api_client.post(self.forgot_url, data=data)
+        assert response.status_code == status.HTTP_200_OK
+        assert not mock_auth_dependencies.set.called
+
+    def test_forgot_password_non_existent_user(
+        self, api_client, mock_auth_dependencies
+    ):
+        mock_auth_dependencies.get.return_value = None
+        data = {"email": "nonexistent@example.com"}
+        response = api_client.post(self.forgot_url, data=data)
+        assert response.status_code == status.HTTP_200_OK
+        assert not mock_auth_dependencies.set.called
 
     def test_reset_password_success(self, api_client, user, mock_auth_dependencies):
         token = "valid_reset_token"
@@ -170,6 +342,26 @@ class TestPasswordReset:
         assert response.status_code == status.HTTP_200_OK
         user.refresh_from_db()
         assert user.check_password("NewPassword123!") is True
+
+    def test_reset_password_invalid_token(self, api_client, mock_auth_dependencies):
+        mock_auth_dependencies.get.return_value = None
+        data = {
+            "token": "expired",
+            "password": "NewPassword123!",
+            "confirm_password": "NewPassword123!",
+        }
+        response = api_client.post(self.reset_url, data=data)
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_reset_password_user_not_found(self, api_client, mock_auth_dependencies):
+        mock_auth_dependencies.get.return_value = "ghost@example.com"
+        data = {
+            "token": "valid_but_no_user",
+            "password": "NewPassword123!",
+            "confirm_password": "NewPassword123!",
+        }
+        response = api_client.post(self.reset_url, data=data)
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
 class TestTokenOperations:

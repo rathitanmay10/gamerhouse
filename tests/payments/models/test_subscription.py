@@ -17,7 +17,6 @@ def payment_test_data(db):
     return {"tenant": tenant, "admin": admin_user}
 
 
-@pytest.mark.django_db
 class TestSubscriptionModel:
     def test_subscription_creation(self, payment_test_data):
         """Subscription created with default NONE status."""

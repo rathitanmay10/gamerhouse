@@ -30,7 +30,6 @@ def test_data(db):
     }
 
 
-@pytest.mark.django_db
 class TestUserGameModel:
     def test_user_game_creation(self, test_data):
         ug = UserGame.objects.create(

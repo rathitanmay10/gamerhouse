@@ -4,7 +4,6 @@ from django.db.models import ProtectedError
 from catalog.models import Game, Genre, Platform
 
 
-@pytest.mark.django_db
 class TestPlatformModel:
     def test_platform_creation(self):
         platform = Platform.objects.create(name="PlayStation 5")

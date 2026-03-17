@@ -1,10 +1,7 @@
-import pytest
-
 from payments.enums import WebhookEventStatus
 from payments.models.webhook_models import WebhookEvent
 
 
-@pytest.mark.django_db
 class TestWebhookEventModel:
     def test_webhook_event_creation(self):
         """Webhook event creation default status is PENDING."""

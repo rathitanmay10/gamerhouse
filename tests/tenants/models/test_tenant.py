@@ -1,10 +1,7 @@
-import pytest
-
 from core.enums import TenantStatus
 from tenants.models import Tenant
 
 
-@pytest.mark.django_db
 class TestTenantModel:
     def test_tenant_creation(self):
         tenant = Tenant.objects.create(name="Sample Tenant")

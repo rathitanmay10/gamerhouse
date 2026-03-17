@@ -33,7 +33,6 @@ def test_data(db):
     }
 
 
-@pytest.mark.django_db
 class TestTenantGameModel:
     def test_tenant_game_creation(self, test_data):
         tg = test_data["tenant_game"]
