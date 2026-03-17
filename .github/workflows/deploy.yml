@@ -25,7 +25,80 @@ env:
   IMAGE_NAME: ghcr.io/tanmayrathi-gkmit/gamerhouse
 
 jobs:
+  run-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: gamerhouse_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        healthcheck:
+          test: ["CMD-SHELL", "pg_isready -U postgres"]
+          interval: 10s
+          timeout: 5s
+          retries: 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        healthcheck:
+          test: ["CMD", "redis-cli", "ping"]
+          interval: 10s
+          timeout: 5s
+          retries: 5
+
+    env:
+      DJANGO_SETTINGS_MODULE: gamer_house.settings
+      SECRET_KEY: "django-insecure-test-key"
+      DEBUG: "True"
+      ALLOWED_HOSTS: "*"
+      POSTGRES_NAME: gamerhouse_test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
+      CELERY_BROKER_URL: redis://localhost:6379/0
+      CELERY_RESULT_BACKEND: redis://localhost:6379/2
+      REDIS_CACHE_URL: redis://localhost:6379/1
+      FRONTEND_URL: "http://localhost:3000"
+      EMAIL_HOST: "localhost"
+      EMAIL_PORT: 1025
+      EMAIL_HOST_USER: "test@example.com"
+      EMAIL_HOST_PASSWORD: "testpassword"
+      DEFAULT_FROM_EMAIL: "noreply@example.com"
+      RAZORPAY_KEY_ID: "rzp_test_key"
+      RAZORPAY_KEY_SECRET: "test_secret"
+      RAZORPAY_WEBHOOK_SECRET: "webhook_secret"
+      AUTH_THROTTLE_RATE: "1000/minute"
+      LOG_LEVEL: "DEBUG"
+      LOG_FILE_ENABLED: "False"
+      LOG_CONSOLE_ENABLED: "True"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+
+      - name: Run Pytest
+        run: |
+          uv run pytest
+
   build-and-deploy:
+    needs: run-tests
     # For PRs, only run if the PR was actually merged (not just closed)
     if: github.event_name == 'push' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest

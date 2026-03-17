@@ -220,3 +220,8 @@ logs/
 *.log
 
 .DS_Store
+
+# Load Testing
+core/management/commands/generate_load_test_tokens.py
+locustfile.py
+load_test_tokens.json
