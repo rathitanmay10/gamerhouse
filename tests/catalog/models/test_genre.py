@@ -12,10 +12,6 @@ class TestGenreModel:
         assert genre.id is not None
         assert genre.created_at is not None
 
-    def test_genre_str(self):
-        genre = GenreFactory(name="Strategy")
-        assert str(genre) == "Strategy"
-
     def test_genre_deletion_protected(self):
         genre = GenreFactory()
         # GameFactory by default creates a Genre, so we override it

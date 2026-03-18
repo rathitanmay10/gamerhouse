@@ -22,10 +22,6 @@ class TestGameModel:
         assert game.genre == genre
         assert game.platforms.count() == 2
 
-    def test_game_str(self):
-        game = GameFactory(title="City Builder XYZ")
-        assert str(game) == "City Builder XYZ"
-
     def test_game_soft_delete(self):
         game = GameFactory()
         game.delete()

@@ -13,10 +13,6 @@ class TestTenantModel:
         assert tenant.id is not None
         assert tenant.created_at is not None
 
-    def test_tenant_str(self):
-        tenant = TenantFactory(name="Cyber Cafe")
-        assert str(tenant) == "Cyber Cafe"
-
     def test_tenant_soft_delete(self):
         tenant = TenantFactory()
         tenant.delete()

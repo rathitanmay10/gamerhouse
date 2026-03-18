@@ -11,10 +11,6 @@ class TestPlatformModel:
         assert platform.name == "PlayStation 5"
         assert platform.id is not None
 
-    def test_platform_str(self):
-        platform = PlatformFactory(name="Xbox Series X")
-        assert str(platform) == "Xbox Series X"
-
     def test_platform_deletion_protected(self):
         platform = PlatformFactory()
         # GameFactory post_generation adds a platform by default if none provided

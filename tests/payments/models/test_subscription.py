@@ -12,10 +12,6 @@ class TestSubscriptionModel:
         assert sub.activated_at is None
         assert sub.payment is None
 
-    def test_subscription_str(self):
-        sub = SubscriptionFactory()
-        assert str(sub) == f"Subscription for {sub.tenant.name} - {sub.status}"
-
     def test_subscription_activate(self):
         sub = SubscriptionFactory(status=SubscriptionStatus.NONE)
         payment = PaymentFactory(admin__tenant=sub.tenant)

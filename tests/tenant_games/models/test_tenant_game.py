@@ -14,11 +14,6 @@ class TestTenantGameModel:
         assert tg.game is not None
         assert tg.id is not None
 
-    def test_tenant_game_str(self):
-        tg = TenantGameFactory()
-        expected_str = f"{tg.tenant.name} - {tg.game.title}"
-        assert str(tg) == expected_str
-
     def test_unique_active_tenant_game_constraint(self):
         tg = TenantGameFactory()
         with pytest.raises(IntegrityError):

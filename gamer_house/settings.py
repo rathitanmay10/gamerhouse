@@ -41,7 +41,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     # "silk.middleware.SilkyMiddleware",
-    # "pyinstrument.middleware.ProfilerMiddleware", 
+    # "pyinstrument.middleware.ProfilerMiddleware",
     "core.middleware.JsonErrorMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
