@@ -36,7 +36,7 @@ install_if_missing() {
 echo "⏳  Updating package repositories …"
 sudo apt-get update -q
 
-install_if_missing git git
+
 install_if_missing nginx nginx
 install_if_missing certbot certbot
 
@@ -84,16 +84,6 @@ passthrough_environment:
 EOF
 echo "✅  New Relic configuration updated."
 
-# ── Ensure log forwarder can resolve the license key ─────────────────────────
-echo "⏳  Updating New Relic systemd environment overrides …"
-sudo mkdir -p /etc/systemd/system/newrelic-infra.service.d/
-cat <<EOF | sudo tee /etc/systemd/system/newrelic-infra.service.d/override.conf > /dev/null
-[Service]
-Environment="NR_LICENSE_KEY_ENV_VAR=${NEW_RELIC_LICENSE_KEY}"
-EOF
-sudo systemctl daemon-reload
-echo "✅  New Relic systemd overrides updated."
-
 # Configure Log Forwarding
 LOG_CONF="/etc/newrelic-infra/logging.d/gamerhouse.yml"
 if [ ! -f "$LOG_CONF" ]; then
@@ -114,21 +104,6 @@ fi
 echo "⏳  Restarting New Relic agent …"
 sudo systemctl restart newrelic-infra
 echo "✅  New Relic agent restarted."
-
-
-# ── 2. Clone repo or pull latest ─────────────────────────────────────────────
-if [ ! -d "$APP_DIR/.git" ]; then
-  echo "⏳  Cloning repository …"
-  sudo git clone --branch "$BRANCH" "$REPO_URL" "$APP_DIR"
-  sudo chown -R "$USER":"$USER" "$APP_DIR"
-  echo "✅  Repository cloned."
-else
-  echo "⏳  Pulling latest code …"
-  cd "$APP_DIR"
-  git fetch origin
-  git reset --hard "origin/$BRANCH"
-  echo "✅  Code updated."
-fi
 
 cd "$APP_DIR"
 

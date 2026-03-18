@@ -9,13 +9,11 @@ FROM python:3.13-slim
 # libpq-dev / gcc needed to compile psycopg2-binary native extensions
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
-    gcc \
-    libpq-dev \
  && rm -rf /var/lib/apt/lists/*
 
 # ── Install uv ────────────────────────────────────────────────────────────────
 # Pinned to a specific version for reproducibility
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.10.11 /uv /usr/local/bin/uv
 
 # ── Working directory ─────────────────────────────────────────────────────────
 WORKDIR /app
