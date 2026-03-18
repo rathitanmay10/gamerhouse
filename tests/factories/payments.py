@@ -12,7 +12,7 @@ class PaymentFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Payment
 
-    tenant = factory.SubFactory(TenantFactory)
+    tenant = factory.SelfAttribute("admin.tenant")
     admin = factory.SubFactory(UserFactory)
     razorpay_order_id = factory.Sequence(lambda n: f"order_{n}")
     amount = 50000  # 500 INR in paise

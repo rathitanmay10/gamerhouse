@@ -1,40 +1,26 @@
 import pytest
 from django.db import IntegrityError
 
-from tenants.models import Tenant
-from users.models import User
+from tests.factories.tenants import TenantFactory
+from tests.factories.users import UserFactory
 
 
-@pytest.fixture
-def test_data(db):
-    tenant = Tenant.objects.create(name="Test Tenant")
-    user = User.objects.create(
-        email="gamer@example.com", username="gamer", tenant=tenant
-    )
-
-    return {
-        "tenant": tenant,
-        "user": user,
-    }
-
-
+@pytest.mark.django_db
 class TestUserModel:
-    def test_user_creation(self, test_data):
-        user = test_data["user"]
+    def test_user_creation(self):
+        tenant = TenantFactory()
+        user = UserFactory(email="gamer@example.com", tenant=tenant)
         assert user.email == "gamer@example.com"
-        assert not user.is_verified
-        assert user.tenant == test_data["tenant"]
+        assert user.is_verified is True
+        assert user.tenant == tenant
 
-    def test_email_uniqueness(self, test_data):
+    def test_email_uniqueness(self):
+        UserFactory(email="duplicate@example.com")
         with pytest.raises(IntegrityError):
-            User.objects.create(
-                email="gamer@example.com",
-                username="another_gamer",
-                tenant=test_data["tenant"],
-            )
+            UserFactory(email="duplicate@example.com")
 
-    def test_user_soft_delete(self, test_data):
-        user = test_data["user"]
+    def test_user_soft_delete(self):
+        user = UserFactory()
         assert user.is_active is True
 
         user.soft_delete()
@@ -42,11 +28,13 @@ class TestUserModel:
 
         assert user.is_active is False
         assert user.deleted_at is not None
+        from users.models import User
+
         assert User.objects.filter(id=user.id).count() == 0
         assert User.all_objects.filter(id=user.id).count() == 1
 
-    def test_user_delete_override(self, test_data):
-        user = test_data["user"]
+    def test_user_delete_override(self):
+        user = UserFactory()
         user.delete()
         user.refresh_from_db()
 
