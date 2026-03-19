@@ -1,16 +1,7 @@
 import json
 
-import pytest
 from django.urls import reverse
 from rest_framework import status
-
-
-@pytest.fixture(autouse=True)
-def mock_webhook_services(mocker):
-    """
-    Mock external side effects.
-    """
-    mocker.patch("payments.views.webhook_views.process_webhook_task.delay")
 
 
 class TestRazorpayWebhookAPIView:

@@ -6,7 +6,6 @@ from tests.factories.tenant_games import TenantGameFactory
 from tests.factories.user_games import UserGameFactory
 
 
-@pytest.mark.django_db
 class TestTenantGameModel:
     def test_tenant_game_creation(self):
         tg = TenantGameFactory()

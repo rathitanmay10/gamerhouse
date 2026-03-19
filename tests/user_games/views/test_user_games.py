@@ -118,7 +118,7 @@ class TestUserGamesAPI:
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["data"]) == 3
 
-    def test_admin_can_list_tenant_games(self, admin_client, tenant):
+    def test_admin_can_list_gamer_games(self, admin_client, tenant):
         """Verify that a tenant admin can list all games in the tenant."""
         user1 = UserFactory(tenant=tenant, role=Roles.GAMER)
         user2 = UserFactory(tenant=tenant, role=Roles.GAMER)

@@ -19,7 +19,7 @@ class TestCreateOrderAPIView:
     def url(self):
         return reverse("payments-create-order")
 
-    def test_admin_can_create_order(self, admin_client, tenant, mocker):
+    def test_admin_can_create_order(self, admin_client, mocker):
         """Verify that a tenant admin can successfully create a razorpay order."""
         mock_create_order = mocker.patch(
             "payments.services.PaymentService.create_order"
@@ -44,9 +44,7 @@ class TestCreateOrderAPIView:
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_already_premium_tenant_cannot_create_order(
-        self, admin_client, tenant, mocker
-    ):
+    def test_already_premium_tenant_cannot_create_order(self, admin_client, mocker):
         """Verify that an order cannot be created if the tenant is already premium."""
         from payments.exceptions import TenantAlreadyPremiumError
 
@@ -105,9 +103,7 @@ class TestVerifyPaymentAPIView:
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_verification_fails_with_invalid_signature(
-        self, admin_client, tenant, mocker
-    ):
+    def test_verification_fails_with_invalid_signature(self, admin_client, mocker):
         """Verify that verification fails cleanly on bad signature."""
         from payments.exceptions import PaymentVerificationError
 

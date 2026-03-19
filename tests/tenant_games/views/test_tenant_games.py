@@ -24,8 +24,7 @@ class TestTenantGamesAPI:
 
         response = admin_client.get(self.url)
         assert response.status_code == status.HTTP_200_OK
-        # Current implementation returns all games; at least 3 should be there
-        assert len(response.data["data"]) == 3
+        assert response.data["count"] == 3
 
     def test_gamer_can_list_tenant_games(self, authenticated_client, tenant):
         """Verify that a gamer can list games available in their tenant."""
