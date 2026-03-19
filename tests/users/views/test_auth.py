@@ -130,19 +130,19 @@ class TestRegistration:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "User does not exist" in str(response.data)
 
-    def test_verify_email_missing_token(self, api_client):
+    def test_verify_email_missing_token(self, api_client, mock_auth_dependencies):
         url = reverse("verify-email")
         response = api_client.get(url)
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert not mock_auth_dependencies.get.called
 
     def test_verify_email_invalid_token(self, api_client, mock_auth_dependencies):
         token = "invalid_token"
-        mock_auth_dependencies.get.return_value = None
-
         url = reverse("verify-email")
         response = api_client.get(f"{url}?token={token}")
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert mock_auth_dependencies.get.called
 
     def test_resend_verification_email_success(
         self, api_client, user, mock_auth_dependencies
@@ -169,13 +169,12 @@ class TestRegistration:
         response = api_client.post(url, data=data)
 
         assert response.status_code == status.HTTP_200_OK
-        assert not mock_auth_dependencies.set.called
+        assert not mock_auth_dependencies.get.called
 
     def test_resend_verification_no_email(self, api_client):
         url = reverse("resend-verification")
         response = api_client.post(url, data={})
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        # The structure is {'error': {'email': [...]}} based on failing test output
         assert "email" in str(response.data)
 
     def test_resend_verification_already_sent_cache(
