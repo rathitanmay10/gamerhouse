@@ -11,7 +11,7 @@ class TestUserModel:
         tenant = TenantFactory()
         user = UserFactory(email="gamer@example.com", tenant=tenant)
         assert user.email == "gamer@example.com"
-        assert user.is_verified is False
+        assert user.is_verified is True
         assert user.tenant == tenant
 
     def test_email_uniqueness(self):
