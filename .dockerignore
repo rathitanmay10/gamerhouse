@@ -1,0 +1,43 @@
+# Git
+.git
+.gitignore
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual envs
+.venv/
+venv/
+
+# Environment variables (CRITICAL)
+.env
+.env.*
+
+# Logs
+logs/
+log/
+*.log
+profiles/
+
+# Testing / coverage
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# Dev tools
+.vscode/
+
+# Node (if present)
+node_modules/
+
+# Load testing (safe to exclude)
+locustfile.py
+load_test_tokens.json
+
+# Load-test-only management commands
+core/management/commands/generate_load_test_tokens.py
+core/management/commands/delete_load_test_genres.py

@@ -1,4 +1,11 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# GamerHouse — Docker Compose
+# Services: web · postgres · redis · celery-worker · celery-beat
+# ─────────────────────────────────────────────────────────────────────────────
+
 services:
+
+  # ── PostgreSQL ───────────────────────────────────────────────────────────────
   postgres:
     image: postgres:16
     container_name: gamerhouse_postgres
@@ -9,8 +16,121 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
+  # ── Redis ────────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: gamerhouse_redis
+    restart: always
+    command: redis-server --save "" --appendonly no   # no persistence needed
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  # ── Django web (Gunicorn) ────────────────────────────────────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: gamerhouse_web
+    container_name: gamerhouse_web
+    restart: always
+    env_file: .env
+    environment:
+      # Override localhost defaults so containers talk to each other by service name
+      POSTGRES_HOST: postgres
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      REDIS_CACHE_URL: redis://redis:6379/1
+    ports:
+      - "8000:8000"           # expose to host; Nginx on host proxies here
+    volumes:
+      - /opt/gamerhouse/staticfiles:/app/staticfiles   # bind-mount so host Nginx can serve /static/
+      - ./logs:/app/logs      # persist Django logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/health/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s       # give gunicorn + migrations time to finish
+
+  # ── Celery Worker ────────────────────────────────────────────────────────────
+  celery-worker:
+    image: gamerhouse_web      # reuse the image built by the web service
+    container_name: gamerhouse_celery_worker
+    restart: always
+    command:
+      - uv
+      - run
+      - celery
+      - -A
+      - gamer_house
+      - worker
+      - -l
+      - info
+      - --concurrency=2
+    env_file: .env
+    environment:
+      SKIP_DJANGO_SETUP: "true"   # skip migrate/collectstatic/seed in entrypoint
+      POSTGRES_HOST: postgres
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      REDIS_CACHE_URL: redis://redis:6379/1
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      web:
+        condition: service_healthy   # ensure migrations ran before worker starts
+      redis:
+        condition: service_healthy
+
+  # ── Celery Beat ─────────────────────────────────────────────────────────────
+  celery-beat:
+    image: gamerhouse_web      # reuse the image built by the web service
+    container_name: gamerhouse_celery_beat
+    restart: always
+    command:
+      - uv
+      - run
+      - celery
+      - -A
+      - gamer_house
+      - beat
+      - -l
+      - info
+      - --scheduler
+      - celery.beat:PersistentScheduler
+    env_file: .env
+    environment:
+      SKIP_DJANGO_SETUP: "true"
+      POSTGRES_HOST: postgres
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      REDIS_CACHE_URL: redis://redis:6379/1
+    volumes:
+      - ./logs:/app/logs
+      - celerybeat_data:/app/celerybeat  # persist beat schedule file
+    depends_on:
+      web:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+# ─────────────────────────────────────────────────────────────────────────────
 volumes:
   postgres_data:
+  celerybeat_data:

@@ -83,9 +83,10 @@ class RegisterAPIView(APIView):
                 {"detail": "Tenant header missing."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        email = request.data.get("email").lower()
+        email = request.data.get("email")
         if not email:
             raise ValidationError({"email": "This field is required."})
+        email = email.lower()
         if cache.get(verify_email_key(email)):
             return Response(
                 {"message": "Verification mail already sent. Verify or resend."},
@@ -271,7 +272,7 @@ class LogoutAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        serializer = LogoutSerializer(data=request.data, context={'request': request})
+        serializer = LogoutSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         serializer.save()
 

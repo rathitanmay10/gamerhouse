@@ -197,15 +197,14 @@ class TenantGameBulkDeleteSerializer(serializers.Serializer):
                     {"tenant": "Tenant is required for super admin."}
                 )
         else:
-            attrs["tenant"] = user.tenant.id
-
+            attrs["tenant"] = user.tenant_id
         return attrs
 
     def create(self, validated_data):
         tenant_id = validated_data["tenant"]
         tenant_game_ids = validated_data["tenant_games"]
-
-        TenantGame.objects.filter(
+        deleted = TenantGame.objects.filter(
             id__in=tenant_game_ids,
             tenant_id=tenant_id,
         ).update(deleted_at=timezone.now())
+        return deleted
