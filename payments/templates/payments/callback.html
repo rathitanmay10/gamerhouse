@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Verifying payment</title>
+</head>
+<body>
+  <h3 id="status">Verifying your payment…</h3>
+
+  <script>
+  function pollPaymentStatus() {
+    const statusEl = document.getElementById("status");
+    const params = new URLSearchParams(window.location.search);
+
+    const token = params.get("token");
+    const paymentId = params.get("payment_id");
+
+    if (!token || !paymentId) {
+      statusEl.innerText = "❌ Invalid payment session";
+      return;
+    }
+
+    fetch(`/api/v1/admin/payments/${paymentId}/`, {
+      headers: {
+        "Authorization": "Bearer " + token
+      }
+    })
+      .then(res => {
+        if (!res.ok) throw new Error("Request failed");
+        return res.json();
+      })
+      .then(data => {
+        const status = data.data.status;
+;
+
+        // ✅ SUCCESS STATES
+        if (["paid", "verified", "activated"].includes(status)) {
+          statusEl.innerText = "✅ Payment successful! Redirecting…";
+          return;
+        }
+
+        // ❌ FAILURE STATES
+        if (["failed", "cancelled", "refunded"].includes(status)) {
+          statusEl.innerText =
+            "❌ Payment failed or was cancelled. If money was deducted, contact support.";
+          return;
+        }
+
+        // ⏳ IN-PROGRESS STATES
+        statusEl.innerText = "⏳ Finalizing your payment…";
+        setTimeout(pollPaymentStatus, 2000);
+      })
+      .catch(() => {
+        statusEl.innerText = "⚠️ Waiting for payment confirmation…";
+        setTimeout(pollPaymentStatus, 3000);
+      });
+  }
+
+  pollPaymentStatus();
+</script>
+
+</body>
+</html>

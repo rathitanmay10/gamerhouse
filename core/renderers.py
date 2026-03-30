@@ -16,6 +16,12 @@ class StandardJSONRenderer(JSONRenderer):
         if response and response.exception:
             return super().render(data, accepted_media_type, renderer_context)
 
+        if isinstance(data, dict) and "message" in data:
+            return super().render(data, accepted_media_type, renderer_context)
+
+        if isinstance(data, dict) and "error" in data:
+            return super().render(data, accepted_media_type, renderer_context)
+
         if isinstance(data, dict) and "data" in data and "count" in data:
             return super().render(data, accepted_media_type, renderer_context)
 

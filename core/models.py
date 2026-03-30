@@ -1,16 +1,31 @@
 import uuid
 
+from django.core.exceptions import FieldDoesNotExist
 from django.db import models
 from django.utils import timezone
+
+from core.context import current_tenant
 
 
 class ActiveManager(models.Manager):
     """
-    Manager that returns only non-deleted games.
+    Custom manager that excludes soft-deleted records.
+
+    Returns only records where deleted_at is NULL.
+    Use all_objects manager to access soft-deleted records.
     """
 
     def get_queryset(self):
-        return super().get_queryset().filter(deleted_at__isnull=True)
+        tenant = current_tenant.get()
+        qs = super().get_queryset().filter(deleted_at__isnull=True)
+
+        if tenant:
+            try:
+                self.model._meta.get_field("tenant")
+                qs = qs.filter(tenant=tenant)
+            except FieldDoesNotExist:
+                pass
+        return qs
 
 
 class BaseModel(models.Model):

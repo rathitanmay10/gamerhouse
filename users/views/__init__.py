@@ -1,11 +1,29 @@
-from .auth import LoginView, LogoutAPIView, RegisterAPIView
-from .user import AdminUserViewSet, ChangePasswordAPIView, MeAPIView
+from .auth_views import (
+    ForgotPasswordAPIView,
+    LoginVerifyAPIView,
+    LoginView,
+    LogoutAPIView,
+    RegisterAPIView,
+    ResendVerificationAPIView,
+    ResetPasswordAPIView,
+    TenantTokenRefreshView,
+    VerifyEmailAPIView,
+)
+from .ui_views import ResetPasswordPageView
+from .user_views import ChangePasswordAPIView, MeAPIView, UserViewSet
 
 __all__ = [
     "RegisterAPIView",
     "LoginView",
     "LogoutAPIView",
-    "AdminUserViewSet",
+    "UserViewSet",
     "MeAPIView",
     "ChangePasswordAPIView",
+    "VerifyEmailAPIView",
+    "ResendVerificationAPIView",
+    "ResetPasswordAPIView",
+    "ForgotPasswordAPIView",
+    "LoginVerifyAPIView",
+    "TenantTokenRefreshView",
+    "ResetPasswordPageView",
 ]

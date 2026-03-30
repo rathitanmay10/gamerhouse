@@ -1,10 +1,13 @@
-from rest_framework.exceptions import PermissionDenied
+from django.db import transaction
+from django.utils import timezone
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.viewsets import ModelViewSet
 
 from core.enums import Roles
-from core.permissions import IsAdminReadOnlyOrOwner
-from user_games.filters import UserGameQueryFilter
+from user_games.filters import UserGameFilter
 from user_games.models import UserGame, UserGameNote
+from user_games.permissions import IsTenantAdminOrGamer, UserGameNotePermission
 from user_games.serializers import UserGameNoteSerializer, UserGameSerializer
 
 
@@ -12,50 +15,68 @@ class UserGameViewSet(ModelViewSet):
     """
     User Games API
 
-    Admin:
-    - GET only
+    Gamers:
+        - GET, POST, PATCH, DELETE
+        - Only their own games
 
-    Gamer:
-    - GET, POST, PATCH, DELETE
-    - Only their own games
+    Admins:
+        - GET, POST, PATCH, DELETE
+        - Can manage games for any user in their tenant
     """
 
-    permission_classes = [IsAdminReadOnlyOrOwner]
+    permission_classes = [IsTenantAdminOrGamer]
     serializer_class = UserGameSerializer
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = UserGameFilter
 
     def get_queryset(self):
         user = self.request.user
+        # qs = (
+        #     UserGame.objects.filter(tenant=user.tenant)
+        #     .select_related("tenant_game__game")
+        #     .prefetch_related("tenant_game__game__platforms")
+        # )
+        qs = UserGame.objects.select_related("tenant_game__game").prefetch_related(
+            "tenant_game__game__platforms"
+        )
+        if user.role == Roles.GAMER:
+            qs = qs.filter(user=user)
+        return qs
 
-        if user.role == Roles.ADMIN:
-            qs = UserGame.objects.all()
-        else:
-            qs = UserGame.objects.filter(user=user)
-
-        return UserGameQueryFilter(qs, self.request.query_params).apply()
-
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+    @transaction.atomic
+    def perform_destroy(self, instance):
+        instance.notes.update(deleted_at=timezone.now())
+        return super().perform_destroy(instance)
 
 
 class UserGameNoteViewSet(ModelViewSet):
-    permission_classes = [IsAdminReadOnlyOrOwner]
+    permission_classes = [UserGameNotePermission]
     serializer_class = UserGameNoteSerializer
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
 
+    def get_user_game(self):
+        """Get and cache the UserGame object with permission checks."""
+        if not hasattr(self, "_user_game"):
+            user = self.request.user
+            user_game_id = self.kwargs.get("user_game_id")
+            try:
+                user_game = UserGame.objects.get(id=user_game_id, tenant=user.tenant)
+            except UserGame.DoesNotExist:
+                raise NotFound("UserGame not found.")
+
+            if user.role == Roles.GAMER and user_game.user != user:
+                raise PermissionDenied(
+                    "You do not have permission to access this resource."
+                )
+            self._user_game = user_game
+        return self._user_game
+
     def get_queryset(self):
-        user_game_id = self.kwargs.get("user_game_id")
-        return UserGameNote.objects.filter(user_game_id=user_game_id)
+        user_game = self.get_user_game()
+        return UserGameNote.objects.filter(user_game=user_game)
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        user_game_id = self.kwargs.get("user_game_id")
-        try:
-            user_game = UserGame.objects.get(id=user_game_id)
-        except UserGame.DoesNotExist:
-            raise PermissionDenied("UserGame not found.")
-        context["user_game"] = user_game
+        context["user_game"] = self.get_user_game()
         return context
-
-    def perform_create(self, serializer):
-        serializer.save()

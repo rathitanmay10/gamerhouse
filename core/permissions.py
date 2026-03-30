@@ -3,48 +3,67 @@ from rest_framework.permissions import SAFE_METHODS, BasePermission
 from core.enums import Roles
 
 
+class IsSuperAdminRoleOrAdminRole(BasePermission):
+    """
+    Allows access only to users with the SUPER ADMIN and ADMIN role.
+    """
+
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role in [
+            Roles.SUPER_ADMIN,
+            Roles.ADMIN,
+        ]
+
+
+class IsSuperAdminRole(BasePermission):
+    """
+    Allows access only to users with the SUPER ADMIN role.
+    Used for tenant-specific operations like payments.
+    """
+
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role == Roles.SUPER_ADMIN
+
+
 class IsAdminRole(BasePermission):
     """
-    Allows access only to users with the ADMIN role.
+    Allows access only to users with the ADMIN role (not super admins).
+    Used for tenant-specific operations like payments.
     """
 
     def has_permission(self, request, view):
         return request.user.is_authenticated and request.user.role == Roles.ADMIN
 
 
-class IsAdminOrReadOnly(BasePermission):
+class IsSuperAdminOrAdminReadOnly(BasePermission):
     """
-    Allows read-only access to all users.
-    Write operations are restricted to admin users only.
+    Allows read-only access to all admins.
+    Write operations are restricted to super admin users only.
     """
 
     def has_permission(self, request, view):
-        if request.method in SAFE_METHODS:
+        if (
+            request.user.is_authenticated
+            and request.method in SAFE_METHODS
+            and request.user.role
+            in [
+                Roles.SUPER_ADMIN,
+                Roles.ADMIN,
+            ]
+        ):
             return True
 
-        return request.user.is_authenticated and request.user.role == Roles.ADMIN
+        return request.user.is_authenticated and request.user.role == Roles.SUPER_ADMIN
 
 
-class IsAdminReadOnlyOrOwner(BasePermission):
+class IsSuperAdminOrReadOnly(BasePermission):
     """
-    Admin:
-    - Read-only access to all objects
-
-    Gamer:
-    - Full access to own objects only
+    Allows read-only access to all users.
+    Write operations are restricted to super admin users only.
     """
 
     def has_permission(self, request, view):
-        if not request.user.is_authenticated:
-            return False
+        if request.user.is_authenticated and request.method in SAFE_METHODS:
+            return True
 
-        if request.user.role == Roles.ADMIN:
-            return request.method in SAFE_METHODS
-
-        return True
-
-    def has_object_permission(self, request, view, obj):
-        if request.user.role == Roles.ADMIN:
-            return request.method in SAFE_METHODS
-
-        return obj.user == request.user
+        return request.user.is_authenticated and request.user.role == Roles.SUPER_ADMIN

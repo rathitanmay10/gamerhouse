@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import ProtectedError
 
 from core.models import BaseModel
 
@@ -19,3 +20,16 @@ class Genre(BaseModel):
 
     def __str__(self):
         return self.name
+
+    def delete(self, *args, **kwargs):
+        """
+        Override delete to respect on_delete=PROTECT for soft deletes.
+
+        Raises ProtectedError if any active games reference this genre.
+        """
+        if self.games.exists():
+            raise ProtectedError(
+                "Cannot delete Genre because it is referenced by active Games.",
+                [self],
+            )
+        super().delete(*args, **kwargs)
