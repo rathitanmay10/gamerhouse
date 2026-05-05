@@ -29,7 +29,6 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     "django_filters",
-    "django_celery_beat",
     "users",
     "catalog",
     "core",
@@ -37,9 +36,12 @@ INSTALLED_APPS = [
     "tenants",
     "tenant_games",
     "payments",
+    # "silk",
 ]
 
 MIDDLEWARE = [
+    # "silk.middleware.SilkyMiddleware",
+    # "pyinstrument.middleware.ProfilerMiddleware",
     "core.middleware.JsonErrorMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -134,6 +136,7 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+STATIC_ROOT = os.getenv("STATIC_ROOT", BASE_DIR / "staticfiles")
 
 CACHES = {
     "default": {
@@ -172,3 +175,10 @@ LOGGING = get_logging_config()
 RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID")
 RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET")
 RAZORPAY_WEBHOOK_SECRET = os.getenv("RAZORPAY_WEBHOOK_SECRET")
+
+# SILKY_PYTHON_PROFILER = True
+# SILKY_PYTHON_PROFILER_BINARY = True
+# SILKY_INTERCEPT_PERCENT = 100
+
+# PYINSTRUMENT_PROFILE_DIR = 'profiles'
+# PYINSTRUMENT_FILENAME = "{path} {timestamp:.0f}.html"

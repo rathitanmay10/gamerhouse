@@ -1,3 +1,5 @@
+import logging
+
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import IntegrityError
 from django.db.models import ProtectedError
@@ -7,6 +9,10 @@ from rest_framework.exceptions import APIException, NotFound, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import exception_handler
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+
+from core.context import get_correlation_id
+
+logger = logging.getLogger(__name__)
 
 
 def normalize_jwt_error(exc):
@@ -86,7 +92,10 @@ def custom_exception_handler(exc, context):
         if isinstance(response.data, dict) and "detail" in response.data:
             response.data = {"error": response.data["detail"]}
         return response
-
+    logger.error(
+        f"Unexpected exception 500: {exc}",
+        extra={"correlation_id": get_correlation_id()},
+    )
     return Response(
         {"error": "Internal server error."},
         status=status.HTTP_500_INTERNAL_SERVER_ERROR,
