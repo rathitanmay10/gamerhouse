@@ -188,6 +188,20 @@ class TenantGameBulkDeleteSerializer(serializers.Serializer):
     )
 
     def validate(self, attrs):
+        """
+        Validate and normalize tenant information for the bulk-delete operation.
+        
+        If the requesting user is a super admin, require that `attrs` include a `tenant` key; otherwise set `attrs["tenant"]` to the current user's `tenant_id` and return the modified attributes.
+        
+        Parameters:
+            attrs (dict): Incoming validated data from the serializer.
+        
+        Returns:
+            dict: The validated and possibly augmented `attrs` mapping with `tenant` ensured.
+        
+        Raises:
+            serializers.ValidationError: If the user is a super admin and `tenant` is not provided in `attrs`.
+        """
         request = self.context["request"]
         user = request.user
 
@@ -201,6 +215,17 @@ class TenantGameBulkDeleteSerializer(serializers.Serializer):
         return attrs
 
     def create(self, validated_data):
+        """
+        Soft-delete TenantGame mappings for a tenant by setting their `deleted_at` timestamp.
+        
+        Parameters:
+            validated_data (dict): Expected keys:
+                - tenant (UUID): ID of the tenant whose mappings will be deleted.
+                - tenant_games (list[UUID]): List of TenantGame record IDs to soft-delete.
+        
+        Returns:
+            int: Number of TenantGame rows updated (mappings marked as deleted).
+        """
         tenant_id = validated_data["tenant"]
         tenant_game_ids = validated_data["tenant_games"]
         deleted = TenantGame.objects.filter(

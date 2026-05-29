@@ -12,6 +12,14 @@ class TestPlatformModel:
         assert platform.id is not None
 
     def test_platform_deletion_protected(self):
+        """
+        Verifies that deleting a Platform referenced by a Game is blocked.
+        
+        Creates a Platform and associates a Game with it, then asserts that attempting to delete the Platform raises django.db.models.deletion.ProtectedError.
+        
+        Raises:
+            ProtectedError: If the Platform has related Game objects, deletion is prevented.
+        """
         platform = PlatformFactory()
         # GameFactory post_generation adds a platform by default if none provided
         GameFactory(platforms=[platform])
@@ -20,6 +28,11 @@ class TestPlatformModel:
             platform.delete()
 
     def test_platform_deletion_allowed(self):
+        """
+        Verifies that deleting an unreferenced Platform performs a soft delete and updates managers appropriately.
+        
+        Asserts that the instance's `deleted_at` is set, that the default manager no longer returns the object, and that the `all_objects` manager still includes the deleted record.
+        """
         platform = PlatformFactory()
         platform.delete()
 

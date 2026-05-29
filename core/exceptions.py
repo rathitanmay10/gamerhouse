@@ -17,7 +17,19 @@ logger = logging.getLogger(__name__)
 
 def normalize_jwt_error(exc):
     """
-    Extract a clean, stable message from SimpleJWT errors.
+    Return a normalized, client-facing message extracted from a SimpleJWT token exception.
+    
+    Inspects the exception's `detail` attribute and extracts a stable message suitable for API responses:
+    - If `detail` is a string, that string is returned.
+    - If `detail` is a dict and contains a `"detail"` key, that value is returned.
+    - If `detail` is a dict and contains a non-empty `"messages"` list, the first element's `"message"` is returned.
+    - Otherwise returns the fallback message "Invalid or expired token.".
+    
+    Parameters:
+        exc: Exception instance from SimpleJWT/DRF that exposes a `detail` attribute.
+    
+    Returns:
+        str: A cleaned token error message for client consumption.
     """
     if isinstance(exc.detail, str):
         return exc.detail
@@ -35,9 +47,24 @@ def normalize_jwt_error(exc):
 
 def custom_exception_handler(exc, context):
     """
-    Global DRF exception handler with clean HTTP semantics.
-    - 400 for validation errors
-    - Normalized responses for auth, permission, and not-found errors
+    Map DRF and Django exceptions to consistent JSON error responses with appropriate HTTP status codes.
+    
+    Converts common exception types into Response objects with a JSON body of the form {"error": <message>} and an appropriate HTTP status:
+    - ValidationError -> 400 with the original `detail`.
+    - ProtectedError -> 400 with the first exception argument or a default deletion constraint message.
+    - IntegrityError -> 400 with a generic constraint violation message.
+    - ObjectDoesNotExist or Http404 -> 404 with the exception string or "Not Found".
+    - TokenError or InvalidToken -> 401 with a normalized JWT error message.
+    - NotFound -> 404 with the original `detail`.
+    - APIException -> status from `exc.status_code` with `exc.detail`.
+    If not handled above, delegates to DRF's default handler; if that produces a response with a `detail` key, it is transformed to {"error": detail}. If no response is produced, logs the unexpected error (including a correlation_id) and returns a 500 Internal Server Error with {"error": "Internal server error."}.
+    
+    Parameters:
+        exc: The exception instance raised.
+        context: The DRF exception context (contains request and view information).
+    
+    Returns:
+        rest_framework.response.Response: A DRF Response containing a JSON error payload and the appropriate HTTP status code.
     """
     if isinstance(exc, ValidationError):
         return Response(

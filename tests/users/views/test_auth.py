@@ -9,7 +9,12 @@ from core.enums import TenantStatus
 @pytest.fixture(autouse=True)
 def mock_auth_dependencies(mocker):
     """
-    Mock external side effects like emails and token blacklist/revocation.
+    Provide test-wide mocks for external authentication side effects and return the patched cache.
+    
+    Mocks verification, OTP, and password-reset email senders' Celery `.delay` calls, refresh-token blacklist/revocation helpers, and disables DRF scoped throttling. The returned mock is the patched `users.views.auth_views.cache` with `get()` defaulting to `0`.
+    
+    Returns:
+        mock_cache (Mock): The patched cache object for use in tests.
     """
     mocker.patch("users.views.auth_views.send_verification_email.delay")
     mocker.patch("users.views.auth_views.send_otp_email.delay")
@@ -73,6 +78,11 @@ class TestRegistration:
         assert "already sent" in response.data["message"]
 
     def test_user_registration_password_mismatch(self, api_client, tenant):
+        """
+        Verify that registration fails with HTTP 400 when `password` and `confirm_password` do not match.
+        
+        Asserts the tenant-scoped registration endpoint rejects mismatched passwords and responds with 400 Bad Request.
+        """
         data = {
             "username": "newgamer",
             "email": "gamer@example.com",
@@ -97,6 +107,11 @@ class TestRegistration:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_user_registration_missing_tenant_header(self, api_client):
+        """
+        Checks that user registration is rejected when the tenant header is omitted.
+        
+        Sends registration data without the required tenant header and asserts the response status is 400 Bad Request and the response contains the text "Tenant header missing".
+        """
         data = {
             "username": "fail",
             "email": "fail@example.com",

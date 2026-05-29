@@ -9,7 +9,13 @@ from tests.factories.payments import PaymentFactory
 @pytest.fixture(autouse=True)
 def mock_payment_services(mocker):
     """
-    Mock external side effects like celery tasks.
+    Replace the external Celery task trigger used by order views with a noop mock for tests.
+    
+    This autouse-style fixture patches `payments.views.order_views.activate_premium_task.delay`
+    to prevent enqueuing tasks during test execution.
+    
+    Parameters:
+        mocker: The `pytest-mock` fixture used to create the patch.
     """
     mocker.patch("payments.views.order_views.activate_premium_task.delay")
 
@@ -17,6 +23,12 @@ def mock_payment_services(mocker):
 class TestCreateOrderAPIView:
     @property
     def url(self):
+        """
+        Return the reversed URL for the "payments-create-order" endpoint.
+        
+        Returns:
+            str: URL path for the `payments-create-order` endpoint.
+        """
         return reverse("payments-create-order")
 
     def test_admin_can_create_order(self, admin_client, mocker):
@@ -65,6 +77,12 @@ class TestCreateOrderAPIView:
 class TestVerifyPaymentAPIView:
     @property
     def url(self):
+        """
+        Get the reversed URL for the "payments-verify" endpoint.
+        
+        Returns:
+            str: The URL path for the "payments-verify" endpoint.
+        """
         return reverse("payments-verify")
 
     def test_admin_can_verify_payment(self, admin_client, tenant, mocker):
