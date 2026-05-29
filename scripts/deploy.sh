@@ -20,7 +20,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "  GamerHouse Deploy — $(date '+%Y-%m-%d %H:%M:%S')"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-# ── 1. Install system dependencies (docker, compose, git, nginx, certbot) ────
+# install_if_missing installs the given package with apt-get if the specified command is not found in PATH.
 install_if_missing() {
   local cmd=$1
   local pkg=${2:-$1}

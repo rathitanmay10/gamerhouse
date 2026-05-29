@@ -19,6 +19,14 @@ class UserFactory(factory.django.DjangoModelFactory):
 
     @factory.post_generation
     def password(self, create, extracted, **kwargs):
+        """
+        Set the user's password on the factory-created User instance.
+        
+        Parameters:
+            create (bool): True if the factory created and persisted the instance; when True the instance is saved after the password is set.
+            extracted (str | None): Password value provided to the post-generation hook; if None, "password" is used.
+            **kwargs: Additional post-generation kwargs (ignored).
+        """
         password = extracted if extracted else "password"
         self.set_password(password)
         if create:

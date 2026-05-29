@@ -31,6 +31,13 @@ class GameFactory(factory.django.DjangoModelFactory):
 
     @factory.post_generation
     def platforms(self, create, extracted, **kwargs):
+        """
+        Populate the game's `platforms` many-to-many relationship after the factory creates a Game instance.
+        
+        Parameters:
+            create (bool): If False, the instance was not persisted and no relationship changes are applied.
+            extracted (iterable|None): If provided, an iterable of Platform instances to add; if None, a single default Platform is created and added.
+        """
         if not create:
             return
 

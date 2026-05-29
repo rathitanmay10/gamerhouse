@@ -8,7 +8,12 @@ from tests.factories.tenant_games import TenantGameFactory
 
 @pytest.fixture
 def catalog_games():
-    """Create a pool of games in the central catalog."""
+    """
+    Create a small batch of central catalog Game instances for tests.
+    
+    Returns:
+        games (list[Game]): A list of 5 created `Game` model instances.
+    """
     return GameFactory.create_batch(5)
 
 

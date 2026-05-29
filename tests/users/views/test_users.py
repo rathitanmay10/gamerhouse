@@ -29,12 +29,36 @@ class TestUserViewSet:
 
     @property
     def list_url(self):
+        """
+        Get the URL for the user list endpoint.
+        
+        Returns:
+            url (str): The URL path for the "users-list" route.
+        """
         return reverse("users-list")
 
     def detail_url(self, pk):
+        """
+        Return the URL for the users-detail endpoint for the given primary key.
+        
+        Parameters:
+            pk: The primary key or identifier of the user.
+        
+        Returns:
+            str: URL for the user's detail endpoint.
+        """
         return reverse("users-detail", kwargs={"pk": pk})
 
     def restore_url(self, pk):
+        """
+        Builds the URL for the user restore endpoint for the given primary key.
+        
+        Parameters:
+            pk (int | str): Primary key of the user to restore.
+        
+        Returns:
+            str: Fully qualified URL path for the restore-user endpoint with `pk` filled.
+        """
         return reverse("users-restore-user", kwargs={"pk": pk})
 
     def test_superadmin_can_list_admins(self, superadmin_client, tenant):

@@ -8,6 +8,12 @@ from tests.factories.tenants import TenantFactory
 class TestPaymentViewSet:
     @property
     def url(self):
+        """
+        Builds the endpoint URL for the admin payment list view.
+        
+        Returns:
+            url (str): The URL for the admin payment list endpoint.
+        """
         return reverse("admin-payment-list")
 
     def test_superadmin_can_list_all_payments(self, superadmin_client, tenant):
@@ -35,7 +41,11 @@ class TestPaymentViewSet:
             assert str(payment["tenant"]) == str(tenant.id)
 
     def test_gamer_cannot_list_payments(self, authenticated_client):
-        """Verify gamer cannot access monitoring API."""
+        """
+        Verify that a non-admin authenticated user cannot list payments via the admin payments endpoint.
+        
+        Asserts the response status code is HTTP 403 Forbidden.
+        """
         response = authenticated_client.get(self.url)
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
@@ -43,10 +53,16 @@ class TestPaymentViewSet:
 class TestSubscriptionViewSet:
     @property
     def url(self):
+        """
+        Builds the URL for the admin subscription list endpoint.
+        
+        Returns:
+            str: The URL path for the admin subscription list view.
+        """
         return reverse("admin-subscription-list")
 
     def test_superadmin_can_list_all_subscriptions(self, superadmin_client, tenant):
-        """Verify super admin sees all subscriptions across tenets."""
+        """Verify that a superadmin can list subscriptions for all tenants."""
         t1, t2, t3, t4 = TenantFactory.create_batch(4)
         SubscriptionFactory(tenant=tenant)
         SubscriptionFactory(tenant=t1)
@@ -78,6 +94,12 @@ class TestSubscriptionViewSet:
 class TestWebhookEventViewSet:
     @property
     def url(self):
+        """
+        Builds the URL for the admin webhook event list endpoint.
+        
+        Returns:
+            url (str): The URL for the admin webhook list view.
+        """
         return reverse("admin-webhook-list")
 
     def test_superadmin_can_list_webhook_events(self, superadmin_client):

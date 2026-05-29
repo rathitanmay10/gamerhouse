@@ -11,9 +11,24 @@ from tests.factories.users import UserFactory
 class TestUserGamesAPI:
     @property
     def list_url(self):
+        """
+        Return the reverse-resolved list endpoint URL for the tenant user-games resource.
+        
+        Returns:
+            url (str): The URL path for the "user-game-list" endpoint.
+        """
         return reverse("user-game-list")
 
     def detail_url(self, pk):
+        """
+        Return the reverse-resolved URL for the user-game detail endpoint for the given primary key.
+        
+        Parameters:
+            pk (int | str): Primary key of the UserGame to include in the URL.
+        
+        Returns:
+            str: URL path for the "user-game-detail" endpoint with the provided `pk`.
+        """
         return reverse("user-game-detail", kwargs={"pk": pk})
 
     def test_gamer_can_add_game(self, authenticated_client, user, tenant):
@@ -151,7 +166,11 @@ class TestUserGamesAPI:
         assert response.data["hours_played"] == 50
 
     def test_admin_can_update_gamer_game(self, admin_client, tenant):
-        """Verify that an admin can update any gamer's game in their tenant."""
+        """
+        Assert that an admin attempting to change a gamer's `personal_rating` via PATCH receives HTTP 400.
+        
+        Creates a gamer and a UserGame with `personal_rating=3`, sends a PATCH as an admin to set `personal_rating=5`, and expects a 400 Bad Request response.
+        """
         gamer = UserFactory(tenant=tenant, role=Roles.GAMER)
         ug = UserGameFactory(user=gamer, tenant=tenant, personal_rating=3)
 
@@ -192,7 +211,9 @@ class TestUserGamesAPI:
         assert response.status_code == status.HTTP_204_NO_CONTENT
 
     def test_duplicate_game_addition(self, authenticated_client, user, tenant):
-        """Verify that adding the same game on the same platform twice raises an error."""
+        """
+        Ensure posting a tenant catalog game the user already owns on the same platform returns HTTP 400 with an "already have this game" error.
+        """
         tg = TenantGameFactory(tenant=tenant)
         platform = tg.game.platforms.first()
 
@@ -237,5 +258,10 @@ class TestUserGamesAPI:
         assert "cannot exceed 100,000" in str(response.data)
 
     def test_unauthenticated_user_cannot_list_games(self, api_client):
+        """
+        Verifies that unauthenticated clients cannot access the user-games list endpoint.
+        
+        Asserts that a GET request without authentication returns HTTP 401 Unauthorized.
+        """
         response = api_client.get(self.list_url)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
