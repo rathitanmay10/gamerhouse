@@ -77,6 +77,21 @@ class RegisterAPIView(APIView):
 
     @transaction.atomic
     def post(self, request):
+        """
+        Register a new unverified user for a tenant and trigger an email verification.
+        
+        Creates an unverified user belonging to the tenant specified by the X-Tenant-ID request header, stores a verification token in cache, and sends a verification email asynchronously. If a verification token for the given email already exists, no new user is created and the endpoint reports that the verification mail was already sent.
+        
+        Parameters:
+            request: DRF Request — must include the header `X-Tenant-ID` and a request body containing `email`. `email` will be normalized to lowercase.
+        
+        Returns:
+            Response: HTTP responses vary by outcome:
+              - 400 Bad Request if the `X-Tenant-ID` header is missing.
+              - DRF ValidationError if `email` is missing or serializer validation fails.
+              - 200 OK with message "Verification mail already sent. Verify or resend." if a verification token for the email already exists.
+              - 201 Created with message "Registration successful. Please verify your email." on successful registration and verification email dispatch.
+        """
         tenant_id = request.headers.get("X-Tenant-ID")
         if not tenant_id:
             return Response(
@@ -272,6 +287,14 @@ class LogoutAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        """
+        Log out the authenticated user by processing the logout request and invalidating their refresh tokens.
+        
+        Validates input using LogoutSerializer, performs serializer.save() to carry out logout actions (e.g., token invalidation), and returns an HTTP 200 response on success.
+        
+        Returns:
+            Response: HTTP 200 response indicating successful logout.
+        """
         serializer = LogoutSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         serializer.save()

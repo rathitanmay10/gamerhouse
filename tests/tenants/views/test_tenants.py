@@ -8,9 +8,24 @@ from tests.factories.tenants import TenantFactory
 class TestTenantViewSet:
     @property
     def list_url(self):
+        """
+        Return the URL path for the tenant collection endpoint.
+        
+        Returns:
+            str: URL path for the "tenant-list" route.
+        """
         return reverse("tenant-list")
 
     def detail_url(self, pk):
+        """
+        Build the URL for a tenant detail endpoint.
+        
+        Parameters:
+            pk: The primary key of the tenant to include in the URL.
+        
+        Returns:
+            url (str): The fully reversed URL for the tenant detail endpoint.
+        """
         return reverse("tenant-detail", kwargs={"pk": pk})
 
     # --- Super Admin Permissions ---

@@ -7,6 +7,11 @@ from tests.factories.tenants import TenantFactory
 @pytest.mark.django_db
 class TestTenantModel:
     def test_tenant_creation(self):
+        """
+        Verify that TenantFactory creates a Tenant with the expected attributes.
+        
+        Asserts that the created tenant has the provided name, a default status of `TenantStatus.ACTIVE`, and non-null `id` and `created_at` fields.
+        """
         tenant = TenantFactory(name="Sample Tenant")
         assert tenant.name == "Sample Tenant"
         assert tenant.status == TenantStatus.ACTIVE

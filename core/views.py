@@ -19,6 +19,18 @@ class HealthCheckView(APIView):
     authentication_classes = []  # no auth overhead on a health probe
 
     def get(self, request):
+        """
+        Report PostgreSQL and Redis/cache health and return an HTTP Response summarizing the results.
+        
+        Performs connectivity checks for the primary database and the configured cache; any failure is captured and included in the response body.
+        
+        Returns:
+            rest_framework.response.Response: JSON body with keys:
+                - "status": `"ok"` if both checks succeed, `"error"` otherwise.
+                - "db": `"ok"` when the database check succeeds, otherwise the exception text from the database check.
+                - "redis": `"ok"` when the cache check succeeds, otherwise the exception text from the cache check.
+            The response uses HTTP 200 when both checks succeed and HTTP 503 if either check fails.
+        """
         status = {"db": "ok", "redis": "ok"}
         http_status = 200
 

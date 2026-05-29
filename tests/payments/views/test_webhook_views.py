@@ -7,6 +7,12 @@ from rest_framework import status
 class TestRazorpayWebhookAPIView:
     @property
     def url(self):
+        """
+        Get the URL path for the 'payments-webhook' Django route.
+        
+        Returns:
+            str: The resolved URL path for the 'payments-webhook' route.
+        """
         return reverse("payments-webhook")
 
     def test_webhook_processes_valid_signature(self, api_client, mocker):
@@ -49,7 +55,11 @@ class TestRazorpayWebhookAPIView:
         mock_task.assert_called_once()
 
     def test_webhook_fails_with_invalid_signature(self, api_client, mocker):
-        """Verify that webhooks with invalid signatures return error cleanly."""
+        """
+        Ensure the webhook endpoint responds with an error payload and does not enqueue processing when Razorpay signature verification fails.
+        
+        This test triggers a SignatureVerificationError from Razorpay's verification utility and asserts the API returns HTTP 200 with an `"error"` message matching the exception and that the asynchronous processing task is not called.
+        """
         from razorpay.errors import SignatureVerificationError
 
         mock_verify = mocker.patch(

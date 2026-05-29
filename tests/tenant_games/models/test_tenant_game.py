@@ -14,11 +14,21 @@ class TestTenantGameModel:
         assert tg.id is not None
 
     def test_unique_active_tenant_game_constraint(self):
+        """
+        Verifies that creating a second active TenantGame with the same tenant and game violates the database uniqueness constraint.
+        
+        Asserts that attempting to create another TenantGame using the same `tenant` and `game` as an existing record raises `IntegrityError`.
+        """
         tg = TenantGameFactory()
         with pytest.raises(IntegrityError):
             TenantGameFactory(tenant=tg.tenant, game=tg.game)
 
     def test_tenant_game_deletion_protected(self):
+        """
+        Asserts that deleting a TenantGame is blocked when related UserGame instances exist.
+        
+        Creates a TenantGame and an associated UserGame, then verifies that attempting to delete the TenantGame raises a ProtectedError.
+        """
         tg = TenantGameFactory()
         UserGameFactory(tenant_game=tg)
 
@@ -26,6 +36,9 @@ class TestTenantGameModel:
             tg.delete()
 
     def test_tenant_game_soft_delete(self):
+        """
+        Verifies that deleting a TenantGame performs a soft delete: the instance's `deleted_at` is set, the default manager excludes the record, and the `all_objects` manager still returns it.
+        """
         tg = TenantGameFactory()
         tg_id = tg.id
         tg.delete()

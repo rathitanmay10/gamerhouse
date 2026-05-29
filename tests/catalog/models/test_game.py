@@ -6,6 +6,11 @@ from tests.factories.catalog import GameFactory, GenreFactory, PlatformFactory
 @pytest.mark.django_db
 class TestGameModel:
     def test_game_creation(self):
+        """
+        Verify that a Game can be created with the given title, description, genre, and platforms.
+        
+        Asserts that the created game's title and description match the provided values, that its genre is the supplied Genre instance, and that it is associated with exactly two Platform instances.
+        """
         genre = GenreFactory(name="Adventure")
         p1 = PlatformFactory(name="PC")
         p2 = PlatformFactory(name="Console")
